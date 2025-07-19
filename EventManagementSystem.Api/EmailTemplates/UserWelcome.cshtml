@@ -1,0 +1,75 @@
+﻿@model EventManagementSystem.Core.DTOs.Email.UserWelcomeModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Welcome to @Model.SiteName</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; }
+        .features { background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 10px; }
+        .feature-item { margin: 10px 0; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎉 @Model.SiteName</div>
+            <h1>Welcome, @Model.UserName!</h1>
+            <p>Thank you for joining our event management platform</p>
+        </div>
+
+        <div class="content">
+            <h2>🚀 Get Started with Your Account</h2>
+            <p>We're excited to have you join our community! To get the most out of your experience, please verify your email address first.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="@Model.EmailVerificationUrl" class="cta-button">
+                    ✉️ Verify Email Address
+                </a>
+            </div>
+
+            <div class="features">
+                <h3>🎯 What You Can Do:</h3>
+                <div class="feature-item">🎪 <strong>Discover Events:</strong> Browse exciting events in your area</div>
+                <div class="feature-item">🎫 <strong>Easy Registration:</strong> Register for events with just a few clicks</div>
+                <div class="feature-item">📱 <strong>Digital Tickets:</strong> Get QR code tickets delivered instantly</div>
+                <div class="feature-item">🔔 <strong>Smart Reminders:</strong> Never miss an event with automatic reminders</div>
+                <div class="feature-item">📊 <strong>Manage Registrations:</strong> View and manage all your event registrations</div>
+            </div>
+
+            <h3>🎪 Ready to Explore?</h3>
+            <p>Once your email is verified, you can:</p>
+            <ul>
+                <li>Browse all available events</li>
+                <li>Register for events that interest you</li>
+                <li>Receive important updates and reminders</li>
+                <li>Access your digital tickets</li>
+            </ul>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="@Model.LoginUrl" style="color: #667eea; text-decoration: none; font-weight: bold;">
+                    🚪 Login to Your Account →
+                </a>
+            </div>
+
+            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                <p><strong>💡 Need Help?</strong></p>
+                <p>If you have any questions or need assistance, feel free to contact our support team. We're here to help!</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; @DateTime.Now.Year @Model.SiteName. All rights reserved.</p>
+            <p>This email was sent to @Model.Email</p>
+            <p>Email sent at @Model.SentAt.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,102 @@
+﻿@model EventManagementSystem.Core.DTOs.Email.EventCancellationModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Event Cancelled - @Model.EventTitle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .cancellation-box {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Event Cancelled</h1>
+            <p>Important notice about your registered event</p>
+        </div>
+
+        <div class="content">
+            <h2>Hello @Model.UserName,</h2>
+
+            <div class="cancellation-box">
+                <h3>We regret to inform you that the following event has been cancelled:</h3>
+                <h2 style="color: #c0392b; margin: 15px 0;">@Model.EventTitle</h2>
+                <p><strong>Originally scheduled for:</strong> @Model.OriginalEventDate.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+
+                @if (!string.IsNullOrEmpty(Model.CancellationReason))
+                {
+                    <div style="margin-top: 15px;">
+                        <strong>Reason for cancellation:</strong>
+                        <p style="font-style: italic;">@Model.CancellationReason</p>
+                    </div>
+                }
+            </div>
+
+            <p>We sincerely apologize for any inconvenience this cancellation may cause. We understand this is disappointing, and we appreciate your understanding.</p>
+
+            @if (!string.IsNullOrEmpty(Model.RefundInformation))
+            {
+                <div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                    <h4>💰 Refund Information:</h4>
+                    <p>@Model.RefundInformation</p>
+                </div>
+            }
+
+            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                <h4>📞 Need Assistance?</h4>
+                <p>If you have any questions about this cancellation or need further assistance, please don't hesitate to contact us:</p>
+                <p><strong>📧 Email:</strong> <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a></p>
+                <p>Our support team is here to help and will respond to your inquiry promptly.</p>
+            </div>
+
+            <p>Thank you for your understanding, and we hope to see you at future events!</p>
+        </div>
+
+        <div class="footer">
+            <p>&copy; @DateTime.Now.Year @Model.SiteName. All rights reserved.</p>
+            <p>This notice was sent to @Model.Email</p>
+        </div>
+    </div>
+</body>
+</html>

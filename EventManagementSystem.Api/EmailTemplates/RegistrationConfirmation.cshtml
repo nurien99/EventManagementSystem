@@ -1,0 +1,162 @@
+﻿@model EventManagementSystem.Core.DTOs.Email.RegistrationConfirmationModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Registration Confirmed - @Model.EventTitle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .ticket-info {
+            background: #f8f9fa;
+            border: 2px dashed #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .qr-code {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+        }
+
+        .footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Registration Confirmed!</h1>
+            <p>You're all set for @Model.EventTitle</p>
+        </div>
+
+        <div class="content">
+            <h2>Hello @Model.UserName,</h2>
+
+            <!-- 🔍 TEMPORARY DEBUG SECTION - REMOVE AFTER FIXING -->
+            <div style="background-color: #fff3e0; border: 2px solid #ff9800; padding: 15px; margin: 10px 0; border-radius: 5px; font-family: monospace; font-size: 12px;">
+                <h4 style="color: #e65100; margin-top: 0;">🔍 DEBUG INFORMATION (Remove after fixing)</h4>
+                <p><strong>UserName:</strong> @Model.UserName</p>
+                <p><strong>Email:</strong> @Model.Email</p>
+                <p><strong>EventTitle:</strong> @Model.EventTitle</p>
+                <p><strong>TicketNumber:</strong> @Model.TicketNumber</p>
+                <p><strong>QRCodeBase64 Length:</strong> @(Model.QRCodeBase64?.Length ?? 0)</p>
+                <p><strong>QRCodeBase64 Empty:</strong> @string.IsNullOrEmpty(Model.QRCodeBase64)</p>
+                <p><strong>SiteName:</strong> @Model.SiteName</p>
+                <p><strong>RegistrationId:</strong> @Model.RegistrationId</p>
+                @if (!string.IsNullOrEmpty(Model.QRCodeBase64))
+                {
+                    <p><strong>QR Code Preview:</strong> @Model.QRCodeBase64.Substring(0, Math.Min(50, Model.QRCodeBase64.Length))...</p>
+                    <p style="color: green;"><strong>✅ QR Code data is present!</strong></p>
+                }
+                else
+                {
+                    <p style="color: red;"><strong>❌ QR Code data is MISSING!</strong></p>
+                }
+                @if (Model.TicketTypes?.Any() == true)
+                {
+                    <p><strong>Ticket Types Count:</strong> @Model.TicketTypes.Count</p>
+                }
+                else
+                {
+                    <p style="color: red;"><strong>❌ No ticket types found!</strong></p>
+                }
+            </div>
+            <!-- 🔍 END DEBUG SECTION -->
+            <p>Great news! Your registration for <strong>@Model.EventTitle</strong> has been confirmed.</p>
+
+            <div class="ticket-info">
+                <h3>🎫 Your Event Details</h3>
+                <p><strong>📅 Event:</strong> @Model.EventTitle</p>
+                <p><strong>🕐 Date & Time:</strong> @Model.EventStartDate.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+                @if (Model.EventEndDate.HasValue)
+                {
+                    <p><strong>🕐 End Time:</strong> @Model.EventEndDate.Value.ToString("h:mm tt")</p>
+                }
+                <p><strong>📍 Venue:</strong> @Model.VenueName</p>
+                <p><strong>🗺️ Address:</strong> @Model.VenueAddress</p>
+                <p><strong>🎫 Ticket Number:</strong> <span style="font-family: monospace; background-color: #e9ecef; padding: 5px; border-radius: 3px;">#@Model.TicketNumber</span></p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.QRCodeBase64))
+            {
+                <div class="qr-code">
+                    <h3>📱 Your Digital Ticket</h3>
+                    <img src="data:image/png;base64,@Model.QRCodeBase64" alt="Ticket QR Code" style="max-width: 200px; border: 2px solid #dee2e6; border-radius: 10px;" />
+                    <p><strong>📲 Important:</strong> Present this QR code at the event for check-in</p>
+                    <p><small>💾 Save this email or take a screenshot of the QR code</small></p>
+                </div>
+            }
+
+            @if (Model.TicketTypes?.Any() == true)
+            {
+                <div style="background-color: #e8f4f8; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                    <h4>🎟️ Your Tickets:</h4>
+                    @foreach (var ticket in Model.TicketTypes)
+                    {
+                        <p>• @ticket.Quantity x @ticket.TypeName @(ticket.Price > 0 ? $"(${ticket.Price:F2} each)" : "(Free)")</p>
+                    }
+                </div>
+            }
+
+            <div style="background-color: #d4edda; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                <h4>✅ What to Expect:</h4>
+                <ul>
+                    <li>📧 You'll receive a reminder email 24 hours before the event</li>
+                    <li>🚪 Arrive 15 minutes early for smooth check-in</li>
+                    <li>📱 Have your QR code ready on your phone or printed</li>
+                    <li>🆔 Bring a valid ID if required</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <p>Need to cancel your registration?</p>
+                <a href="@Model.CancellationUrl" style="color: #dc3545; text-decoration: none;">
+                    ❌ Cancel Registration
+                </a>
+            </div>
+
+            <p>We're excited to see you at the event! If you have any questions, please don't hesitate to contact us.</p>
+        </div>
+
+        <div class="footer">
+            <p>&copy; @DateTime.Now.Year @Model.SiteName. All rights reserved.</p>
+            <p>Registration ID: @Model.RegistrationId</p>
+        </div>
+    </div>
+</body>
+</html>
