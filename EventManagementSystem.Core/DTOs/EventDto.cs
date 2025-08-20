@@ -13,7 +13,7 @@ namespace EventManagementSystem.Core.DTOs
         public int EventID { get; set; }
         public string EventName { get; set; }
         public string EventDesc { get; set; }
-        public DateTime StartDate { get; set; }
+        public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public EventStatus Status { get; set; }
         public int? MaxCapacity { get; set; }

@@ -1,0 +1,382 @@
+﻿@page "/login"
+@layout EventManagementSystem.BlazorApp.Components.Layout.AuthLayout
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.BlazorApp.Services
+
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Sign In - Event Management System</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <!-- Header -->
+        <div class="login-header">
+            <div class="login-logo">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <h2>Welcome Back</h2>
+            <p class="text-muted">Sign in to your account to continue</p>
+        </div>
+
+        <!-- Login Form -->
+        <EditForm Model="loginDto" OnValidSubmit="HandleLogin" class="login-form">
+            <DataAnnotationsValidator />
+
+            <!-- Show Alert Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
+                    @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success" role="alert">
+                    <i class="bi bi-check-circle me-2" aria-hidden="true"></i>
+                    @successMessage
+                </div>
+            }
+
+            <!-- Email Field -->
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text" aria-label="Email icon">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
+                    </span>
+                    <InputText @bind-Value="loginDto.Email"
+                               class="form-control"
+                               id="email"
+                               placeholder="Enter your email"
+                               autocomplete="email"
+                               aria-describedby="email-validation" />
+                </div>
+                <ValidationMessage For="@(() => loginDto.Email)"
+                                   class="text-danger"
+                                   id="email-validation" />
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text" aria-label="Password icon">
+                        <i class="bi bi-lock" aria-hidden="true"></i>
+                    </span>
+                    <InputText type="@(showPassword ? "text" : "password")"
+                               @bind-Value="loginDto.Password"
+                               class="form-control"
+                               id="password"
+                               placeholder="Enter your password"
+                               autocomplete="current-password"
+                               aria-describedby="password-validation" />
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="TogglePasswordVisibility"
+                            aria-label="@(showPassword ? "Hide password" : "Show password")">
+                        <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <ValidationMessage For="@(() => loginDto.Password)"
+                                   class="text-danger"
+                                   id="password-validation" />
+            </div>
+
+            <!-- Remember Me & Forgot Password -->
+            <div class="form-options">
+                <div class="form-check">
+                    <InputCheckbox @bind-Value="loginDto.RememberMe" class="form-check-input" id="rememberMe" />
+                    <label class="form-check-label" for="rememberMe">
+                        Remember me
+                    </label>
+                </div>
+                <a href="/forgot-password" class="forgot-password-link">
+                    Forgot password?
+                </a>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit"
+                    class="btn btn-primary btn-lg w-100"
+                    disabled="@(isLoading || !IsFormValid())">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>
+                    <span>Sign In</span>
+                }
+            </button>
+        </EditForm>
+
+        <!-- Registration Link -->
+        <div class="login-footer">
+            <p class="text-center text-muted">
+                Don't have an account?
+                <a href="/register" class="register-link">Create one here</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .login-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: var(--radius-xl);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        max-width: 450px;
+        width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .login-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-500) 0%, var(--accent-500) 100%);
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .login-logo {
+        color: var(--primary-500);
+        font-size: 3rem;
+        margin-bottom: 20px;
+    }
+
+    .login-header h2 {
+        color: var(--gray-800);
+        font-weight: 700;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg, var(--primary-500) 0%, var(--accent-500) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .login-form .form-group {
+        margin-bottom: 20px;
+    }
+
+    .login-form .form-label {
+        font-weight: 600;
+        color: var(--gray-700);
+        margin-bottom: 8px;
+    }
+
+    .login-form .input-group-text {
+        background: var(--gray-50);
+        border-color: var(--gray-300);
+        color: var(--gray-500);
+        transition: all 0.3s ease;
+    }
+
+    .login-form .form-control {
+        border-color: var(--gray-300);
+        padding: 12px 16px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .login-form .form-control:focus {
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 3px rgba(2, 149, 169, 0.1);
+    }
+
+    .login-form .form-control:focus + .btn,
+    .login-form .input-group:focus-within .input-group-text {
+        border-color: var(--primary-500);
+        background: rgba(2, 149, 169, 0.05);
+        color: var(--primary-500);
+    }
+
+    .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .forgot-password-link {
+        color: var(--primary-500);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .forgot-password-link:hover {
+        color: var(--primary-600);
+        text-decoration: underline;
+    }
+
+    .login-footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .register-link {
+        color: var(--primary-500);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .register-link:hover {
+        color: var(--primary-600);
+        text-decoration: underline;
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 768px) {
+        .login-card {
+            padding: 30px 20px;
+            margin: 10px;
+        }
+
+        .login-logo {
+            font-size: 2.5rem;
+        }
+
+        .form-options {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .login-container {
+            padding: 10px;
+        }
+
+        .login-card {
+            padding: 20px 15px;
+        }
+    }
+</style>
+
+@code {
+    private UserLoginDto loginDto = new();
+    private bool isLoading = false;
+    private bool showPassword = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Check if user is already authenticated
+            if (await AuthService.IsAuthenticatedAsync())
+            {
+                Navigation.NavigateTo("/dashboard");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Authentication check error: {ex.Message}");
+            // Handle the error appropriately - could set an error message
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        if (isLoading || !IsFormValid())
+            return;
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(loginDto);
+
+            if (result?.Success == true)
+            {
+                successMessage = "Login successful! Redirecting...";
+                StateHasChanged();
+
+                // Small delay to show success message
+                await Task.Delay(1000);
+
+                // Get return URL from query parameters - Simple implementation
+                var uri = new Uri(Navigation.Uri);
+                var query = uri.Query;
+                string? returnUrl = null;
+
+                if (!string.IsNullOrEmpty(query))
+                {
+                    var queryParams = query.TrimStart('?').Split('&');
+                    var returnUrlParam = queryParams.FirstOrDefault(p => p.StartsWith("returnUrl="));
+                    if (returnUrlParam != null)
+                    {
+                        returnUrl = Uri.UnescapeDataString(returnUrlParam.Substring("returnUrl=".Length));
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(returnUrl))
+                {
+                    Navigation.NavigateTo(returnUrl);
+                }
+                else
+                {
+                    Navigation.NavigateTo("/dashboard");
+                }
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "Login failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during login. Please try again.";
+            Console.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(loginDto.Email) &&
+               !string.IsNullOrWhiteSpace(loginDto.Password);
+    }
+}

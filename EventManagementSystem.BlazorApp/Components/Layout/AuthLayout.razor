@@ -1,0 +1,144 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@namespace EventManagementSystem.BlazorApp.Components.Layout
+@inherits LayoutComponentBase
+
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <NotAuthorized>
+            <!-- Distraction-Free Auth Layout -->
+            <div class="auth-layout">
+                <!-- Simplified Header Component -->
+                <AuthHeader />
+                
+                <!-- Main Content (Centered) -->
+                <main class="auth-main">
+                    <div class="auth-content">
+                        @Body
+                    </div>
+                </main>
+                
+                <!-- Optional Footer -->
+                <footer class="auth-footer">
+                    <div class="container text-center">
+                        <small class="text-muted">
+                            © 2024 Event Management System. All rights reserved.
+                        </small>
+                    </div>
+                </footer>
+            </div>
+        </NotAuthorized>
+        <Authorized>
+            <!-- Redirect authenticated users -->
+            <div class="d-flex justify-content-center align-items-center vh-100">
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3"></div>
+                    <p>Redirecting to dashboard...</p>
+                </div>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is authenticated and redirect if needed
+        // This will only run when the AuthLayout is actually used for authenticated users
+        await Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Small delay to ensure the authorization state is determined
+            await Task.Delay(100);
+            
+            // If we're showing the authorized content, redirect to dashboard
+            // This is safer than doing it directly in the markup
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo("/dashboard");
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+}
+
+<style>
+    .auth-layout {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--lagoon-teal) 100%);
+        position: relative;
+    }
+
+    .auth-layout::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        pointer-events: none;
+    }
+
+    .auth-main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .auth-content {
+        width: 100%;
+        max-width: 500px;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .auth-footer {
+        padding: 1rem 0;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        z-index: 1;
+    }
+
+    .auth-footer .text-muted {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-weight: 500;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .auth-main {
+            padding: 1rem 0.5rem;
+        }
+        
+        .auth-content {
+            max-width: 100%;
+        }
+    }
+</style>
+

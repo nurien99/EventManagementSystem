@@ -1,0 +1,325 @@
+@namespace EventManagementSystem.BlazorApp.Components.UI
+
+<!-- Terms and Privacy Modal -->
+<div class="modal fade @(IsVisible ? "show" : "")" tabindex="-1" style="display: @(IsVisible ? "block" : "none")" @onclick="CloseModal" @onclick:stopPropagation="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" @onclick:stopPropagation="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Title</h5>
+                <button type="button" class="btn-close" @onclick="CloseModal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (ContentType == "terms")
+                {
+                    <div class="terms-content">
+                        <h6>1. Acceptance of Terms</h6>
+                        <p>By accessing and using the Event Management System, you accept and agree to be bound by the terms and provision of this agreement.</p>
+
+                        <h6>2. Use License</h6>
+                        <p>Permission is granted to temporarily use the Event Management System for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
+                        <ul>
+                            <li>modify or copy the materials;</li>
+                            <li>use the materials for any commercial purpose or for any public display (commercial or non-commercial);</li>
+                            <li>attempt to decompile or reverse engineer any software contained on the website;</li>
+                            <li>remove any copyright or other proprietary notations from the materials.</li>
+                        </ul>
+
+                        <h6>3. User Accounts</h6>
+                        <p>When you create an account with us, you must provide information that is accurate, complete, and current at all times. You are responsible for safeguarding the password and for keeping your account information up-to-date.</p>
+
+                        <h6>4. Event Organization</h6>
+                        <p>Event organizers are responsible for:</p>
+                        <ul>
+                            <li>Providing accurate event information</li>
+                            <li>Managing event registrations professionally</li>
+                            <li>Complying with all applicable laws and regulations</li>
+                            <li>Ensuring event safety and security</li>
+                        </ul>
+
+                        <h6>5. Event Registration</h6>
+                        <p>Event attendees agree to:</p>
+                        <ul>
+                            <li>Provide accurate registration information</li>
+                            <li>Follow event rules and guidelines</li>
+                            <li>Respect other attendees and organizers</li>
+                            <li>Understand that registration may be subject to approval</li>
+                        </ul>
+
+                        <h6>6. Payment and Refunds</h6>
+                        <p>Payment terms and refund policies are set by individual event organizers. We act as a platform facilitator and are not responsible for payment disputes between organizers and attendees.</p>
+
+                        <h6>7. Prohibited Uses</h6>
+                        <p>You may not use our service:</p>
+                        <ul>
+                            <li>For any unlawful purpose or to solicit others to perform unlawful acts</li>
+                            <li>To violate any international, federal, provincial, or state regulations, rules, laws, or local ordinances</li>
+                            <li>To infringe upon or violate our intellectual property rights or the intellectual property rights of others</li>
+                            <li>To harass, abuse, insult, harm, defame, slander, disparage, intimidate, or discriminate</li>
+                            <li>To submit false or misleading information</li>
+                        </ul>
+
+                        <h6>8. Disclaimer</h6>
+                        <p>The information on this website is provided on an 'as is' basis. To the fullest extent permitted by law, we exclude all representations, warranties, and conditions relating to our website and the use of this website.</p>
+
+                        <h6>9. Limitations</h6>
+                        <p>In no event shall Event Management System or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the service.</p>
+
+                        <h6>10. Governing Law</h6>
+                        <p>These terms and conditions are governed by and construed in accordance with the laws and you irrevocably submit to the exclusive jurisdiction of the courts in that state or location.</p>
+
+                        <h6>11. Changes to Terms</h6>
+                        <p>We reserve the right to revise these terms of service at any time without notice. By using this website, you are agreeing to be bound by the then current version of these terms of service.</p>
+
+                        <p class="text-muted mt-4"><small>Last updated: @DateTime.Now.ToString("MMMM dd, yyyy")</small></p>
+                    </div>
+                }
+                else if (ContentType == "privacy")
+                {
+                    <div class="privacy-content">
+                        <h6>Information We Collect</h6>
+                        <p>We collect information you provide directly to us, such as when you:</p>
+                        <ul>
+                            <li>Create an account</li>
+                            <li>Register for events</li>
+                            <li>Contact us for support</li>
+                            <li>Subscribe to our newsletter</li>
+                        </ul>
+
+                        <h6>Personal Information</h6>
+                        <p>This may include:</p>
+                        <ul>
+                            <li>Name and contact information (email address, phone number)</li>
+                            <li>Account credentials (username, password)</li>
+                            <li>Profile information (organization, preferences)</li>
+                            <li>Event-related information (registration details, attendance)</li>
+                            <li>Payment information (processed securely by third-party providers)</li>
+                        </ul>
+
+                        <h6>How We Use Your Information</h6>
+                        <p>We use the information we collect to:</p>
+                        <ul>
+                            <li>Provide, maintain, and improve our services</li>
+                            <li>Process event registrations and communications</li>
+                            <li>Send you technical notices and support messages</li>
+                            <li>Respond to your comments and questions</li>
+                            <li>Send marketing communications (with your consent)</li>
+                            <li>Monitor and analyze usage patterns</li>
+                        </ul>
+
+                        <h6>Information Sharing</h6>
+                        <p>We may share your information:</p>
+                        <ul>
+                            <li>With event organizers when you register for their events</li>
+                            <li>With service providers who assist us in operating our platform</li>
+                            <li>When required by law or to protect our rights</li>
+                            <li>In connection with a business transfer or acquisition</li>
+                        </ul>
+                        <p>We do not sell your personal information to third parties.</p>
+
+                        <h6>Data Security</h6>
+                        <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.</p>
+
+                        <h6>Data Retention</h6>
+                        <p>We retain your information for as long as necessary to provide our services and comply with legal obligations. You may request deletion of your account and personal information at any time.</p>
+
+                        <h6>Your Rights</h6>
+                        <p>You have the right to:</p>
+                        <ul>
+                            <li>Access and update your personal information</li>
+                            <li>Delete your account and personal data</li>
+                            <li>Opt-out of marketing communications</li>
+                            <li>Request a copy of your data</li>
+                            <li>Lodge a complaint with supervisory authorities</li>
+                        </ul>
+
+                        <h6>Cookies and Tracking</h6>
+                        <p>We use cookies and similar technologies to improve your experience, analyze usage, and provide personalized content. You can control cookie settings through your browser.</p>
+
+                        <h6>Third-Party Services</h6>
+                        <p>Our platform may integrate with third-party services (payment processors, analytics providers). These services have their own privacy policies which govern their use of your information.</p>
+
+                        <h6>Children's Privacy</h6>
+                        <p>Our service is not intended for children under 13. We do not knowingly collect personal information from children under 13.</p>
+
+                        <h6>International Data Transfers</h6>
+                        <p>Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place for such transfers.</p>
+
+                        <h6>Changes to Privacy Policy</h6>
+                        <p>We may update this privacy policy from time to time. We will notify you of any material changes by posting the updated policy on our website.</p>
+
+                        <h6>Contact Us</h6>
+                        <p>If you have questions about this privacy policy or our data practices, please contact us at privacy@eventmanagement.com.</p>
+
+                        <p class="text-muted mt-4"><small>Last updated: @DateTime.Now.ToString("MMMM dd, yyyy")</small></p>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                <button type="button" class="btn btn-primary" @onclick="AcceptAndClose">Accept & Continue</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+<style>
+    .modal.show {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #E5E7EB;
+        padding: 1.5rem;
+        background: #F9FAFB;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-title {
+        font-weight: 600;
+        color: #1F2937;
+        font-size: 1.25rem;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .modal-body h6 {
+        color: #374151;
+        font-weight: 600;
+        margin: 1.5rem 0 0.75rem 0;
+        font-size: 1rem;
+    }
+
+    .modal-body h6:first-child {
+        margin-top: 0;
+    }
+
+    .modal-body p {
+        color: #6B7280;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .modal-body ul {
+        color: #6B7280;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+    }
+
+    .modal-body li {
+        margin-bottom: 0.25rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #E5E7EB;
+        padding: 1.5rem;
+        background: #F9FAFB;
+        border-radius: 0 0 12px 12px;
+    }
+
+    .modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+    }
+
+    .modal {
+        z-index: 1050;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #6B7280;
+        opacity: 0.7;
+        padding: 0;
+        margin: 0;
+    }
+
+    .btn-close:hover {
+        opacity: 1;
+        color: #374151;
+    }
+
+    .btn-close:before {
+        content: "×";
+    }
+
+    .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .modal-body::-webkit-scrollbar-track {
+        background: #F3F4F6;
+        border-radius: 4px;
+    }
+
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #D1D5DB;
+        border-radius: 4px;
+    }
+
+    .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #9CA3AF;
+    }
+
+    @@media (max-width: 576px) {
+        .modal-dialog {
+            margin: 1rem;
+            max-width: none;
+        }
+
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+            padding: 1rem;
+        }
+
+        .modal-body {
+            max-height: 50vh;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string ContentType { get; set; } = "terms"; // "terms" or "privacy"
+    [Parameter] public EventCallback OnAccept { get; set; }
+
+    private string Title => ContentType == "terms" ? "Terms of Service" : "Privacy Policy";
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+
+    private async Task AcceptAndClose()
+    {
+        if (OnAccept.HasDelegate)
+        {
+            await OnAccept.InvokeAsync();
+        }
+        await CloseModal();
+    }
+
+    // Modal functionality without JSRuntime dependency
+}

@@ -250,6 +250,60 @@ namespace EventManagementSystem.Api.Services
             }
         }
 
+        public async Task<ApiResponse<List<UserTicketDto>>> GetUserTicketsAsync(int userId)
+        {
+            try
+            {
+                _logger.LogInformation("🎫 Retrieving tickets for user: {UserId}", userId);
+
+                var tickets = await _context.IssuedTickets
+                    .Include(it => it.Registration)
+                        .ThenInclude(r => r.Event)
+                            .ThenInclude(e => e.Venue)
+                    .Include(it => it.TicketType)
+                    .Where(it => it.Registration.UserID == userId)
+                    .OrderByDescending(it => it.Registration.Event.StartDate)
+                    .Select(it => new UserTicketDto
+                    {
+                        IssuedTicketID = it.IssuedTicketID,
+                        UniqueReferenceCode = it.UniqueReferenceCode,
+                        QRCodeData = it.QRCodeData,
+                        TicketTypeName = it.TicketType.TypeName,
+                        Price = it.TicketType.Price,
+                        AttendeeName = it.AttendeeName,
+                        AttendeeEmail = it.AttendeeEmail,
+                        CheckedInAt = it.CheckedInAt,
+                        Status = it.Status,
+                        IssuedAt = it.IssuedAt ?? DateTime.Now,
+                        
+                        // Event Details
+                        EventID = it.Registration.Event.EventID,
+                        EventName = it.Registration.Event.EventName,
+                        EventSlug = it.Registration.Event.UrlSlug,
+                        EventStartDate = it.Registration.Event.StartDate,
+                        EventEndDate = it.Registration.Event.EndDate ?? DateTime.MinValue,
+                        EventStatus = it.Registration.Event.Status,
+                        VenueName = it.Registration.Event.Venue.VenueName,
+                        VenueAddress = it.Registration.Event.Venue.Address,
+                        EventImageUrl = it.Registration.Event.ImageUrl,
+                        
+                        // Registration Details
+                        RegistrationID = it.Registration.RegisterID,
+                        RegisteredAt = it.Registration.RegisteredAt ?? DateTime.Now,
+                        RegistrationStatus = it.Registration.Status
+                    })
+                    .ToListAsync();
+
+                _logger.LogInformation("✅ Retrieved {TicketCount} tickets for user: {UserId}", tickets.Count, userId);
+                return ApiResponse<List<UserTicketDto>>.SuccessResult(tickets, $"Retrieved {tickets.Count} tickets");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error retrieving tickets for user: {UserId}", userId);
+                return ApiResponse<List<UserTicketDto>>.ErrorResult("An error occurred while retrieving your tickets", new List<string> { ex.Message });
+            }
+        }
+
         #region Private Helper Methods
 
         private async Task<TicketQRPayload?> ExtractTicketPayloadAsync(string qrData)

@@ -1,0 +1,318 @@
+﻿@* Legacy Register Page - Redirects to new multi-step registration *@
+@page "/register-legacy"
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.BlazorApp.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Create Account - Event Management System</PageTitle>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <!-- Header -->
+        <div class="auth-header">
+            <div class="auth-logo">
+                <i class="bi bi-person-plus"></i>
+            </div>
+            <h2>Create Your Account</h2>
+            <p class="text-muted">Join our community and start discovering amazing events</p>
+        </div>
+
+        <!-- Registration Form -->
+        <EditForm Model="registerDto" OnValidSubmit="HandleRegistration" class="auth-form">
+            <DataAnnotationsValidator />
+
+            <!-- Show Alert Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>
+                    @successMessage
+                </div>
+            }
+
+            <!-- Full Name Field -->
+            <div class="form-group">
+                <label for="name" class="form-label">Full Name</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-person"></i>
+                    </span>
+                    <InputText @bind-Value="registerDto.Name"
+                               class="form-control"
+                               id="name"
+                               placeholder="Enter your full name"
+                               autocomplete="name" />
+                </div>
+                <ValidationMessage For="@(() => registerDto.Name)" class="text-danger" />
+            </div>
+
+            <!-- Email Field -->
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-envelope"></i>
+                    </span>
+                    <InputText @bind-Value="registerDto.Email"
+                               class="form-control"
+                               id="email"
+                               placeholder="Enter your email"
+                               autocomplete="email" />
+                </div>
+                <ValidationMessage For="@(() => registerDto.Email)" class="text-danger" />
+            </div>
+
+            <!-- Phone Number Field (Optional) -->
+            <div class="form-group">
+                <label for="phone" class="form-label">Phone Number <small class="text-muted">(Optional)</small></label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-telephone"></i>
+                    </span>
+                    <InputText @bind-Value="registerDto.PhoneNumber"
+                               class="form-control"
+                               id="phone"
+                               placeholder="Enter your phone number"
+                               autocomplete="tel" />
+                </div>
+                <ValidationMessage For="@(() => registerDto.PhoneNumber)" class="text-danger" />
+            </div>
+
+            <!-- Organization Field (Optional) -->
+            <div class="form-group">
+                <label for="organization" class="form-label">Organization <small class="text-muted">(Optional)</small></label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-building"></i>
+                    </span>
+                    <InputText @bind-Value="registerDto.Organization"
+                               class="form-control"
+                               id="organization"
+                               placeholder="Enter your organization"
+                               autocomplete="organization" />
+                </div>
+                <ValidationMessage For="@(() => registerDto.Organization)" class="text-danger" />
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-lock"></i>
+                    </span>
+                    <InputText type="@(showPassword ? "text" : "password")"
+                               @bind-Value="registerDto.Password"
+                               class="form-control"
+                               id="password"
+                               placeholder="Create a strong password"
+                               autocomplete="new-password" />
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="TogglePasswordVisibility">
+                        <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                    </button>
+                </div>
+                <ValidationMessage For="@(() => registerDto.Password)" class="text-danger" />
+                <small class="form-text text-muted">
+                    Password must be at least 6 characters long
+                </small>
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div class="form-group">
+                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-lock-fill"></i>
+                    </span>
+                    <InputText type="@(showConfirmPassword ? "text" : "password")"
+                               @bind-Value="registerDto.ConfirmPassword"
+                               class="form-control"
+                               id="confirmPassword"
+                               placeholder="Confirm your password"
+                               autocomplete="new-password" />
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="ToggleConfirmPasswordVisibility">
+                        <i class="bi @(showConfirmPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                    </button>
+                </div>
+                <ValidationMessage For="@(() => registerDto.ConfirmPassword)" class="text-danger" />
+            </div>
+
+            <!-- User Role Selection -->
+            <div class="form-group">
+                <label for="role" class="form-label">I want to</label>
+                <div class="role-selection">
+                    <div class="role-option">
+                        <input type="radio"
+                               name="role"
+                               id="attendee"
+                               value="@EventManagementSystem.Core.UserRole.Attendee"
+                               @onchange="@((ChangeEventArgs e) => registerDto.Role = EventManagementSystem.Core.UserRole.Attendee)"
+                               checked="@(registerDto.Role == EventManagementSystem.Core.UserRole.Attendee)" />
+                        <label for="attendee" class="role-label">
+                            <div class="role-icon">
+                                <i class="bi bi-person-check"></i>
+                            </div>
+                            <div class="role-content">
+                                <strong>Attend Events</strong>
+                                <small>Discover and register for events</small>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio"
+                               name="role"
+                               id="organizer"
+                               value="@EventManagementSystem.Core.UserRole.EventOrganizer"
+                               @onchange="@((ChangeEventArgs e) => registerDto.Role = EventManagementSystem.Core.UserRole.EventOrganizer)"
+                               checked="@(registerDto.Role == EventManagementSystem.Core.UserRole.EventOrganizer)" />
+                        <label for="organizer" class="role-label">
+                            <div class="role-icon">
+                                <i class="bi bi-calendar-plus"></i>
+                            </div>
+                            <div class="role-content">
+                                <strong>Organize Events</strong>
+                                <small>Create and manage events</small>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terms and Conditions -->
+            <div class="form-group">
+                <div class="form-check">
+                    <InputCheckbox @bind-Value="acceptTerms" class="form-check-input" id="acceptTerms" />
+                    <label class="form-check-label" for="acceptTerms">
+                        I agree to the <a href="/terms" target="_blank">Terms of Service</a> and
+                        <a href="/privacy" target="_blank">Privacy Policy</a>
+                    </label>
+                </div>
+                @if (showTermsError)
+                {
+                    <small class="text-danger">You must accept the terms and conditions to continue.</small>
+                }
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary btn-lg w-100" disabled="@(isLoading || !acceptTerms)">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <i class="bi bi-person-plus me-2"></i>
+                    <span>Create Account</span>
+                }
+            </button>
+        </EditForm>
+
+        <!-- Login Link -->
+        <div class="auth-footer">
+            <p class="text-center text-muted">
+                Already have an account?
+                <a href="/login" class="login-link">Sign in here</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserRegisterDto registerDto = new() { Role = EventManagementSystem.Core.UserRole.Attendee };
+    private bool isLoading = false;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+    private bool acceptTerms = false;
+    private bool showTermsError = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is already authenticated
+        if (await AuthService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+
+    private async Task HandleRegistration()
+    {
+        if (isLoading) return;
+
+        // Validate terms acceptance
+        if (!acceptTerms)
+        {
+            showTermsError = true;
+            StateHasChanged();
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        showTermsError = false;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(registerDto);
+
+            if (result?.Success == true)
+            {
+                successMessage = "🎉 Account created successfully! Please check your email to verify your account before signing in.";
+                StateHasChanged();
+
+                // ✅ FIX: Longer delay to show success message properly
+                await Task.Delay(5000);
+
+                // Redirect to login page
+                Navigation.NavigateTo("/login?message=registration-success");
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "Registration failed. Please try again.";
+
+                // Show validation errors if available
+                if (result?.Errors?.Any() == true)
+                {
+                    errorMessage += " " + string.Join(" ", result.Errors);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during registration. Please try again.";
+            Console.WriteLine($"Registration error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        showConfirmPassword = !showConfirmPassword;
+    }
+}

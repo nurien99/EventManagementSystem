@@ -1,0 +1,38 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inherits InputBase<DateTime?>
+
+<input @attributes="AdditionalAttributes" 
+       class="@CssClass" 
+       type="datetime-local"
+       value="@CurrentValueAsString"
+       @oninput="@((ChangeEventArgs __e) => CurrentValueAsString = __e.Value.ToString())" />
+
+@code {
+    protected override string? FormatValueAsString(DateTime? value)
+    {
+        return value?.ToString("yyyy-MM-ddTHH:mm") ?? "";
+    }
+
+    protected override bool TryParseValueFromString(string? value, out DateTime? result, out string validationErrorMessage)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            result = null;
+            validationErrorMessage = string.Empty;
+            return true;
+        }
+        
+        if (DateTime.TryParse(value, out var parsedValue))
+        {
+            result = parsedValue;
+            validationErrorMessage = string.Empty;
+            return true;
+        }
+        else
+        {
+            result = null;
+            validationErrorMessage = "Invalid date format";
+            return false;
+        }
+    }
+}

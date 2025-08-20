@@ -1,0 +1,387 @@
+@page "/events/{EventId:int}/assistants"
+@using EventManagementSystem.Core
+@inject EventAssistantService EventAssistantService
+@inject EventService EventService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@attribute [Authorize(Roles = "EventOrganizer,Admin")]
+
+<PageTitle>Event Assistants - Event Management System</PageTitle>
+
+<div class="assistants-container">
+    <div class="page-header">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/events">My Events</a></li>
+                <li class="breadcrumb-item">@eventName</li>
+                <li class="breadcrumb-item active" aria-current="page">Assistants</li>
+            </ol>
+        </nav>
+        
+        <div class="header-content">
+            <h1 class="page-title">
+                <i class="bi bi-people-fill me-3"></i>
+                Event Assistants
+            </h1>
+            <p class="page-subtitle">Manage check-in staff and assistants for @eventName</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Loading assistants...</p>
+        </div>
+    }
+    else if (hasError)
+    {
+        <div class="error-state">
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Error:</strong> @errorMessage
+                <button class="btn btn-outline-danger btn-sm ms-3" @onclick="LoadAssistants">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="assistants-content">
+            <!-- Add Assistant Section -->
+            <div class="add-assistant-card">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-plus me-2"></i>
+                            Add New Assistant
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="newAssistant" OnValidSubmit="AddAssistant">
+                            <DataAnnotationsValidator />
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Assistant Email</label>
+                                    <InputText @bind-Value="newAssistant.AssistantEmail" class="form-control" placeholder="assistant@example.com" />
+                                    <ValidationMessage For="@(() => newAssistant.AssistantEmail)" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Role</label>
+                                    <InputSelect @bind-Value="newAssistant.Role" class="form-select">
+                                        <option value="@AssistantRole.CheckInOnly">Check-In Only</option>
+                                        <option value="@AssistantRole.ViewAttendees">View Attendees</option>
+                                        <option value="@AssistantRole.FullAssistant">Full Assistant</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => newAssistant.Role)" />
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary w-100" disabled="@isAddingAssistant">
+                                        @if (isAddingAssistant)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-plus-circle me-2"></i>
+                                        }
+                                        Add
+                                    </button>
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Assistants -->
+            <div class="current-assistants-card">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people me-2"></i>
+                            Current Assistants (@assistants.Count)
+                        </h5>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAssistants">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (!assistants.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-people display-4 text-muted"></i>
+                                <h5 class="text-muted mt-3">No Assistants Added</h5>
+                                <p class="text-muted">Add assistants to help with event check-in and management.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Assistant</th>
+                                            <th>Role</th>
+                                            <th>Assigned Date</th>
+                                            <th>Assigned By</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var assistant in assistants)
+                                        {
+                                            <tr class="@(assistant.IsActive ? "" : "table-secondary")">
+                                                <td>
+                                                    <div class="user-info">
+                                                        <div class="user-avatar">
+                                                            @assistant.UserName.Substring(0, 1).ToUpper()
+                                                        </div>
+                                                        <div class="user-details">
+                                                            <strong>@assistant.UserName</strong>
+                                                            <small class="text-muted d-block">@assistant.UserEmail</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @GetRoleBadgeClass(assistant.Role)">
+                                                        @GetRoleDisplayName(assistant.Role)
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <small>@assistant.AssignedAt.ToString("MMM dd, yyyy")</small>
+                                                </td>
+                                                <td>
+                                                    <small>@assistant.AssignedByUserName</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @(assistant.IsActive ? "bg-success" : "bg-secondary")">
+                                                        @(assistant.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        @if (assistant.IsActive)
+                                                        {
+                                                            <button class="btn btn-outline-warning" 
+                                                                    @onclick="() => ShowUpdateRoleModal(assistant)">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button class="btn btn-outline-danger" 
+                                                                    @onclick="() => DeactivateAssistant(assistant.EventAssistantID)">
+                                                                <i class="bi bi-person-dash"></i>
+                                                            </button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <button class="btn btn-outline-success" 
+                                                                    @onclick="() => ReactivateAssistant(assistant.EventAssistantID)">
+                                                                <i class="bi bi-person-check"></i>
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Role Legend -->
+                            <div class="role-legend mt-4">
+                                <h6>Role Permissions:</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <span class="badge bg-primary me-2">Check-In Only</span>
+                                        <small class="text-muted">Can check-in tickets via QR scanner</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-info me-2">View Attendees</span>
+                                        <small class="text-muted">Can view attendee lists and check-ins</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-warning text-dark me-2">Full Assistant</span>
+                                        <small class="text-muted">Can manage event details (except deletion)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int EventId { get; set; }
+
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    private string eventName = "";
+    private bool isAddingAssistant = false;
+
+    private List<EventAssistantDto> assistants = new();
+    private AssignAssistantDto newAssistant = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        newAssistant.EventID = EventId;
+        await LoadEventDetails();
+        await LoadAssistants();
+    }
+
+    private async Task LoadEventDetails()
+    {
+        try
+        {
+            var eventResult = await EventService.GetEventByIdAsync(EventId);
+            if (eventResult != null)
+            {
+                eventName = eventResult.EventName;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading event details: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAssistants()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+
+            var result = await EventAssistantService.GetEventAssistantsAsync(EventId);
+            assistants = result ?? new List<EventAssistantDto>();
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = "An error occurred while loading assistants.";
+            Console.WriteLine($"Error loading assistants: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddAssistant()
+    {
+        try
+        {
+            isAddingAssistant = true;
+            
+            Console.WriteLine($"🔵 Adding assistant: EventID={newAssistant.EventID}, Email={newAssistant.AssistantEmail}, Role={newAssistant.Role}");
+            
+            // Validate form data
+            if (string.IsNullOrWhiteSpace(newAssistant.AssistantEmail))
+            {
+                await JSRuntime.InvokeVoidAsync("showAlert", "error", "Please enter an assistant email address.");
+                return;
+            }
+            
+            var result = await EventAssistantService.AssignAssistantAsync(newAssistant);
+            Console.WriteLine($"🔵 Service returned: Success={result?.Success}, Message={result?.Message}");
+            
+            if (result?.Success == true)
+            {
+                await JSRuntime.InvokeVoidAsync("showAlert", "success", "Assistant added successfully!");
+                newAssistant = new AssignAssistantDto { EventID = EventId };
+                await LoadAssistants();
+            }
+            else
+            {
+                var errorMessage = result?.Message ?? "Failed to add assistant.";
+                Console.WriteLine($"🔴 Assignment failed: {errorMessage}");
+                await JSRuntime.InvokeVoidAsync("showAlert", "error", errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"🔴 Exception in AddAssistant: {ex.Message}");
+            Console.WriteLine($"🔴 Stack trace: {ex.StackTrace}");
+            await JSRuntime.InvokeVoidAsync("showAlert", "error", $"An error occurred: {ex.Message}");
+        }
+        finally
+        {
+            isAddingAssistant = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeactivateAssistant(int assistantId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to deactivate this assistant?"))
+        {
+            try
+            {
+                var result = await EventAssistantService.RemoveAssistantAsync(assistantId);
+                if (result?.Success == true)
+                {
+                    await JSRuntime.InvokeVoidAsync("showAlert", "success", "Assistant deactivated successfully!");
+                    await LoadAssistants();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("showAlert", "error", result?.Message ?? "Failed to deactivate assistant.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("showAlert", "error", "An error occurred while deactivating the assistant.");
+                Console.WriteLine($"Error deactivating assistant: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task ReactivateAssistant(int assistantId)
+    {
+        try
+        {
+            // This would need a new endpoint, for now just refresh
+            await JSRuntime.InvokeVoidAsync("showAlert", "info", "Reactivation feature coming soon!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reactivating assistant: {ex.Message}");
+        }
+    }
+
+    private async Task ShowUpdateRoleModal(EventAssistantDto assistant)
+    {
+        // This would show a modal to update role - implement as needed
+        await JSRuntime.InvokeVoidAsync("showAlert", "info", "Role update modal coming soon!");
+    }
+
+    private string GetRoleBadgeClass(AssistantRole role)
+    {
+        return role switch
+        {
+            AssistantRole.CheckInOnly => "bg-primary",
+            AssistantRole.ViewAttendees => "bg-info", 
+            AssistantRole.FullAssistant => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetRoleDisplayName(AssistantRole role)
+    {
+        return role switch
+        {
+            AssistantRole.CheckInOnly => "Check-In Only",
+            AssistantRole.ViewAttendees => "View Attendees",
+            AssistantRole.FullAssistant => "Full Assistant",
+            _ => "Unknown"
+        };
+    }
+}

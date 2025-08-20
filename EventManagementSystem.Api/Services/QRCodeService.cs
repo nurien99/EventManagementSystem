@@ -8,6 +8,7 @@ using System.Text.Json;
 using ZXing;
 using ZXing.Common;
 using ZXing.SkiaSharp;
+using QRCoder;
 
 namespace EventManagementSystem.Api.Services
 {
@@ -201,6 +202,12 @@ namespace EventManagementSystem.Api.Services
                 _logger.LogError(ex, "Error extracting ticket payload from QR data");
                 return null;
             }
+        }
+
+        public async Task<byte[]> GenerateQRCodeImageAsync(string qrData)
+        {
+            // Reuse the existing GenerateTicketQRCodeAsync method
+            return await GenerateTicketQRCodeAsync(qrData);
         }
 
         private string GenerateSignature(int registrationId, int ticketTypeId, string userEmail)

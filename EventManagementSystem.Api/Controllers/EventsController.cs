@@ -199,5 +199,23 @@ namespace EventManagementSystem.Api.Controllers
 
             return Ok(result);
         }
+
+        /// <summary>
+        /// Update event status (e.g., publish/unpublish)
+        /// </summary>
+        [HttpPut("{id}/status")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> UpdateEventStatus(int id, [FromBody] UpdateEventStatusDto statusDto)
+        {
+            var currentUserId = GetCurrentUserId();
+            var result = await _eventService.UpdateEventStatusAsync(id, statusDto.NewStatus, currentUserId);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
     }
 }

@@ -1,0 +1,395 @@
+/* Admin Dashboard Styling */
+
+.admin-dashboard-page {
+    background-color: var(--gray-50);
+    min-height: 100vh;
+    padding: var(--space-8) 0;
+}
+
+.admin-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 var(--space-4);
+}
+
+/* Header Styling */
+.admin-header {
+    margin-bottom: var(--space-8);
+}
+
+.admin-title {
+    color: var(--primary-500);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    margin: 0;
+}
+
+.admin-subtitle {
+    color: var(--gray-600);
+    font-size: var(--text-base);
+    margin: var(--space-2) 0 0 0;
+}
+
+/* Enhanced Stats Cards */
+.stats-card {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    transition: var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient);
+}
+
+.stats-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stats-card.stats-primary::before {
+    background: linear-gradient(90deg, var(--primary-500), var(--primary-light));
+}
+
+.stats-card.stats-success::before {
+    background: linear-gradient(90deg, var(--success-green), #34d399);
+}
+
+.stats-card.stats-info::before {
+    background: linear-gradient(90deg, var(--info-blue), #60a5fa);
+}
+
+.stats-card.stats-warning::before {
+    background: linear-gradient(90deg, var(--warning-yellow), #fbbf24);
+}
+
+.stats-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: var(--text-2xl);
+    flex-shrink: 0;
+    background: var(--primary-500);
+}
+
+.stats-primary .stats-icon { background: var(--primary-500); }
+.stats-success .stats-icon { background: var(--success-green); }
+.stats-info .stats-icon { background: var(--info-blue); }
+.stats-warning .stats-icon { background: var(--warning-yellow); }
+
+.stats-content {
+    flex: 1;
+}
+
+.stats-content h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 var(--space-2) 0;
+    color: var(--gray-900);
+}
+
+.stats-content p {
+    font-size: var(--text-base);
+    color: var(--gray-600);
+    margin: 0 0 var(--space-2) 0;
+    font-weight: 500;
+}
+
+.stats-change {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.stats-change.positive { color: var(--success-green); }
+.stats-change.negative { color: var(--danger-red); }
+.stats-change.neutral { color: var(--gray-500); }
+
+/* Chart Cards */
+.chart-card, .activity-card, .quick-actions-card {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    height: 100%;
+}
+
+.chart-header, .activity-header, .quick-actions-header {
+    padding: var(--space-6) var(--space-6) 0 var(--space-6);
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    border-bottom: 1px solid var(--gray-100);
+    margin-bottom: var(--space-4);
+}
+
+.chart-header h5, .activity-header h5, .quick-actions-header h5 {
+    color: var(--gray-900);
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.chart-content, .activity-content, .quick-actions-content {
+    padding: 0 var(--space-6) var(--space-6) var(--space-6);
+}
+
+/* Role Chart */
+.role-chart, .status-chart {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.role-item, .status-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.role-info, .status-info {
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+}
+
+.role-name, .status-name {
+    font-weight: 600;
+    color: var(--gray-900);
+    font-size: var(--text-sm);
+}
+
+.role-count, .status-count {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.role-bar, .status-bar {
+    flex: 1;
+    height: 8px;
+    background-color: var(--gray-100);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.role-progress, .status-progress {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    transition: var(--transition-base);
+}
+
+.role-progress.role-attendee { background-color: var(--gray-400); }
+.role-progress.role-eventorganizer { background-color: var(--accent-500); }
+.role-progress.role-admin { background-color: var(--primary-500); }
+
+.status-progress.status-draft { background-color: var(--gray-400); }
+.status-progress.status-published { background-color: var(--success-green); }
+.status-progress.status-inprogress { background-color: var(--info-blue); }
+.status-progress.status-completed { background-color: #8b5cf6; }
+.status-progress.status-cancelled { background-color: var(--danger-red); }
+
+.role-percentage, .status-percentage {
+    min-width: 50px;
+    text-align: right;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+/* Activity Feed */
+.activity-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.activity-icon.activity-user-registration { background-color: var(--primary-500); }
+.activity-icon.activity-event-created { background-color: var(--success-green); }
+.activity-icon.activity-event-registration { background-color: var(--info-blue); }
+
+.activity-details {
+    flex: 1;
+}
+
+.activity-description {
+    font-weight: 500;
+    color: var(--gray-900);
+    margin-bottom: var(--space-1);
+}
+
+.activity-time {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.empty-activity {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--gray-500);
+}
+
+.empty-activity i {
+    font-size: 3rem;
+    margin-bottom: var(--space-4);
+    display: block;
+}
+
+/* Quick Actions */
+.quick-action-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+    margin-bottom: var(--space-3);
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition-base);
+}
+
+.quick-action-item:hover {
+    border-color: var(--primary-200);
+    background-color: var(--primary-50);
+    transform: translateX(4px);
+    text-decoration: none;
+    color: inherit;
+}
+
+.quick-action-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: var(--text-xl);
+    flex-shrink: 0;
+}
+
+.quick-action-text {
+    flex: 1;
+}
+
+.quick-action-text h6 {
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0 0 var(--space-1) 0;
+    font-size: var(--text-sm);
+}
+
+.quick-action-text p {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    margin: 0;
+}
+
+.quick-action-item i.bi-arrow-right {
+    color: var(--gray-400);
+    font-size: var(--text-base);
+}
+
+/* Loading State */
+.admin-loading {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-12);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .admin-container {
+        padding: 0 0.5rem;
+    }
+    
+    .admin-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+    
+    .admin-title {
+        font-size: 1.5rem;
+    }
+    
+    .stats-card {
+        padding: 1.5rem;
+    }
+    
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .stats-content h3 {
+        font-size: 2rem;
+    }
+    
+    .role-item, .status-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .role-bar, .status-bar {
+        width: 100%;
+    }
+    
+    .quick-action-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .quick-action-text {
+        text-align: center;
+    }
+}

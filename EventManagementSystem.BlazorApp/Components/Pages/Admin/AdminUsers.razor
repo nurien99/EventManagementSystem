@@ -1,0 +1,502 @@
+@page "/admin/users"
+@using EventManagementSystem.Core
+@using EventManagementSystem.Core.DTOs
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>User Management - Admin</PageTitle>
+
+<div class="admin-page">
+    <div class="admin-container">
+        <!-- Page Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="admin-title">
+                        <i class="bi bi-people me-3"></i>User Management
+                    </h1>
+                    <p class="admin-subtitle">
+                        Manage users, roles, and account status across the platform
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" @onclick="RefreshUsers">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                    </button>
+                    <button class="btn btn-success" @onclick="ExportUsers">
+                        <i class="bi bi-download me-2"></i>Export CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon bg-primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3>@totalUsers</h3>
+                        <p>Total Users</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon bg-success">
+                        <i class="bi bi-person-check"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3>@attendeeCount</h3>
+                        <p>Attendees</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon bg-warning">
+                        <i class="bi bi-person-gear"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3>@organizerCount</h3>
+                        <p>Organizers</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-icon bg-info">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div class="stats-content">
+                        <h3>@adminCount</h3>
+                        <p>Administrators</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="admin-filters mb-4">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="searchTerm" class="form-label">Search Users</label>
+                        <input type="text" id="searchTerm" class="form-control" 
+                               @bind="searchTerm" @onkeyup="SearchUsers"
+                               placeholder="Search by name or email..." />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="roleFilter" class="form-label">Filter by Role</label>
+                        <select id="roleFilter" class="form-select" @bind="roleFilter" @bind:after="FilterUsers">
+                            <option value="">All Roles</option>
+                            <option value="Attendee">Attendees</option>
+                            <option value="EventOrganizer">Organizers</option>
+                            <option value="Admin">Administrators</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="statusFilter" class="form-label">Filter by Status</label>
+                        <select id="statusFilter" class="form-select" @bind="statusFilter" @bind:after="FilterUsers">
+                            <option value="">All Status</option>
+                            <option value="true">Verified</option>
+                            <option value="false">Unverified</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-outline-secondary w-100" @onclick="ClearFilters">
+                            <i class="bi bi-x-circle me-2"></i>Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        @if (isLoading)
+        {
+            <div class="admin-loading">
+                <div class="d-flex justify-content-center align-items-center py-5">
+                    <div class="spinner-border text-primary me-3" role="status"></div>
+                    <span>Loading users...</span>
+                </div>
+            </div>
+        }
+        else if (hasError)
+        {
+            <div class="alert alert-danger">
+                <h5><i class="bi bi-exclamation-triangle me-2"></i>Error Loading Users</h5>
+                <p>@errorMessage</p>
+                <button class="btn btn-danger" @onclick="RefreshUsers">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                </button>
+            </div>
+        }
+        else if (!filteredUsers.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h3>No Users Found</h3>
+                <p>@(string.IsNullOrEmpty(searchTerm) ? "No users are registered on the platform yet." : "No users match your search criteria.")</p>
+            </div>
+        }
+        else
+        {
+            <div class="admin-table-container">
+                <table class="table table-hover admin-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                            <th>Events</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in paginatedUsers)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="user-info">
+                                        <div class="user-avatar">
+                                            <i class="bi bi-person-circle"></i>
+                                        </div>
+                                        <div class="user-details">
+                                            <div class="user-name">@user.Name</div>
+                                            <div class="user-id">ID: @user.UserID</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="user-email">
+                                        @user.Email
+                                        @if (user.IsEmailVerified)
+                                        {
+                                            <i class="bi bi-patch-check-fill text-success ms-1" title="Verified"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-patch-exclamation text-warning ms-1" title="Unverified"></i>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="role-badge role-@user.Role.ToString().ToLower()">
+                                        @user.Role
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-badge @(user.IsEmailVerified ? "status-verified" : "status-unverified")">
+                                        @(user.IsEmailVerified ? "Verified" : "Unverified")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="date-info">
+                                        @user.DateRegistered.ToString("MMM dd, yyyy")
+                                        <small class="text-muted d-block">@user.DateRegistered.ToString("hh:mm tt")</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="event-stats">
+                                        @if (user.Role == UserRole.EventOrganizer || user.Role == UserRole.Admin)
+                                        {
+                                            <span class="badge bg-primary">@(user.EventsCreated ?? 0) Created</span>
+                                        }
+                                        <span class="badge bg-info">@(user.EventsAttended ?? 0) Attended</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewUser(user.UserID)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => EditUser(user.UserID)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        @if (user.Role != UserRole.Admin)
+                                        {
+                                            <button class="btn btn-sm btn-outline-success" @onclick="() => PromoteUser(user.UserID)">
+                                                <i class="bi bi-arrow-up-circle"></i>
+                                            </button>
+                                        }
+                                        @if (user.Role != UserRole.Attendee)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => DemoteUser(user.UserID)">
+                                                <i class="bi bi-arrow-down-circle"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <div class="pagination-container">
+                        <nav>
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(1)">
+                                        <i class="bi bi-chevron-double-left"></i>
+                                    </button>
+                                </li>
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </button>
+                                </li>
+
+                                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                                {
+                                    var pageNum = i;
+                                    <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(pageNum)">
+                                            @pageNum
+                                        </button>
+                                    </li>
+                                }
+
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </li>
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(totalPages)">
+                                        <i class="bi bi-chevron-double-right"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="pagination-info">
+                            Showing @((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, filteredUsers.Count) of @filteredUsers.Count users
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<UserDto> allUsers = new();
+    private List<UserDto> filteredUsers = new();
+    private List<UserDto> paginatedUsers = new();
+    
+    private string searchTerm = "";
+    private string roleFilter = "";
+    private string statusFilter = "";
+    
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    
+    // Stats
+    private int totalUsers = 0;
+    private int attendeeCount = 0;
+    private int organizerCount = 0;
+    private int adminCount = 0;
+    
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages => (int)Math.Ceiling((double)filteredUsers.Count / pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            StateHasChanged();
+
+            var response = await ApiService.GetAsync<List<UserDto>>("/api/admin/users");
+            
+            if (response != null && response.Success && response.Data != null)
+            {
+                allUsers = response.Data;
+                CalculateStats();
+                ApplyFilters();
+            }
+            else
+            {
+                hasError = true;
+                errorMessage = response?.Message ?? "Failed to load users";
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = $"Error loading users: {ex.Message}";
+            Console.WriteLine($"Error in LoadUsers: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CalculateStats()
+    {
+        totalUsers = allUsers.Count;
+        attendeeCount = allUsers.Count(u => u.Role == UserRole.Attendee);
+        organizerCount = allUsers.Count(u => u.Role == UserRole.EventOrganizer);
+        adminCount = allUsers.Count(u => u.Role == UserRole.Admin);
+    }
+
+    private void ApplyFilters()
+    {
+        filteredUsers = allUsers.ToList();
+
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredUsers = filteredUsers.Where(u => 
+                u.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        // Role filter
+        if (!string.IsNullOrWhiteSpace(roleFilter))
+        {
+            if (Enum.TryParse<UserRole>(roleFilter, out var role))
+            {
+                filteredUsers = filteredUsers.Where(u => u.Role == role).ToList();
+            }
+        }
+
+        // Status filter
+        if (!string.IsNullOrWhiteSpace(statusFilter))
+        {
+            if (bool.TryParse(statusFilter, out var isVerified))
+            {
+                filteredUsers = filteredUsers.Where(u => u.IsEmailVerified == isVerified).ToList();
+            }
+        }
+
+        // Reset to first page
+        currentPage = 1;
+        UpdatePagination();
+    }
+
+    private void UpdatePagination()
+    {
+        var skip = (currentPage - 1) * pageSize;
+        paginatedUsers = filteredUsers.Skip(skip).Take(pageSize).ToList();
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            UpdatePagination();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SearchUsers()
+    {
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task FilterUsers()
+    {
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        roleFilter = "";
+        statusFilter = "";
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task RefreshUsers()
+    {
+        await LoadUsers();
+    }
+
+    private async Task ExportUsers()
+    {
+        // TODO: Implement CSV export
+        await JSRuntime.InvokeVoidAsync("alert", "Export functionality will be implemented soon!");
+    }
+
+    private async Task ViewUser(int userId)
+    {
+        Navigation.NavigateTo($"/admin/users/{userId}");
+    }
+
+    private async Task EditUser(int userId)
+    {
+        Navigation.NavigateTo($"/admin/users/{userId}/edit");
+    }
+
+    private async Task PromoteUser(int userId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "Are you sure you want to promote this user to the next role level?");
+        
+        if (confirmed)
+        {
+            // TODO: Implement user promotion API call
+            await JSRuntime.InvokeVoidAsync("alert", "User promotion will be implemented soon!");
+        }
+    }
+
+    private async Task DemoteUser(int userId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "Are you sure you want to demote this user to the previous role level?");
+        
+        if (confirmed)
+        {
+            // TODO: Implement user demotion API call
+            await JSRuntime.InvokeVoidAsync("alert", "User demotion will be implemented soon!");
+        }
+    }
+
+    // Temporary DTO until we create the actual admin API
+    public class UserDto
+    {
+        public int UserID { get; set; }
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public UserRole Role { get; set; }
+        public bool IsEmailVerified { get; set; }
+        public DateTime DateRegistered { get; set; }
+        public int? EventsCreated { get; set; }
+        public int? EventsAttended { get; set; }
+    }
+}

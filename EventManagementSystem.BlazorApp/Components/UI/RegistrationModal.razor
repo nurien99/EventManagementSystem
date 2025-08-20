@@ -1,0 +1,304 @@
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.BlazorApp.Services
+@inject RegistrationService RegistrationService
+@inject AuthService AuthService
+
+<!-- Registration Modal -->
+<div class="modal fade @(isVisible ? "show" : "")" 
+     style="display: @(isVisible ? "block" : "none")" 
+     tabindex="-1" 
+     role="dialog">
+    <div class="modal-backdrop fade @(isVisible ? "show" : "")" @onclick="CloseModal"></div>
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h4 class="modal-title">
+                    <i class="bi bi-ticket-perforated me-2"></i>Register for Event
+                </h4>
+                <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="modal-body d-flex justify-content-center py-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Processing registration...</span>
+                    </div>
+                </div>
+            }
+            else if (registrationSuccess)
+            {
+                <div class="modal-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h3 class="text-success mb-3">Registration Successful!</h3>
+                    <p class="mb-3">
+                        You have successfully registered for <strong>@EventName</strong>.
+                        A confirmation email has been sent to <strong>@registrationForm.AttendeeEmail</strong>.
+                    </p>
+                    @if (registrationResult != null)
+                    {
+                        <div class="alert alert-info">
+                            <strong>Registration ID:</strong> #@registrationResult.RegisterID
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="CloseModal">
+                        <i class="bi bi-check me-2"></i>Done
+                    </button>
+                </div>
+            }
+            else
+            {
+                <EditForm Model="registrationForm" OnValidSubmit="SubmitRegistration">
+                    <DataAnnotationsValidator />
+
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle me-2"></i>@errorMessage
+                            </div>
+                        }
+
+                        <!-- Attendee Information -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-person me-2"></i>Attendee Information
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="attendeeName" class="form-label">Full Name *</label>
+                                        <InputText id="attendeeName" 
+                                                  class="form-control" 
+                                                  @bind-Value="registrationForm.AttendeeName" 
+                                                  placeholder="Enter your full name" />
+                                        <ValidationMessage For="() => registrationForm.AttendeeName" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="attendeeEmail" class="form-label">Email Address *</label>
+                                        <InputText id="attendeeEmail" 
+                                                  class="form-control" 
+                                                  @bind-Value="registrationForm.AttendeeEmail" 
+                                                  placeholder="Enter your email address" />
+                                        <ValidationMessage For="() => registrationForm.AttendeeEmail" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="attendeePhone" class="form-label">Phone Number</label>
+                                        <InputText id="attendeePhone" 
+                                                  class="form-control" 
+                                                  @bind-Value="registrationForm.AttendeePhone" 
+                                                  placeholder="Enter your phone number" />
+                                        <ValidationMessage For="() => registrationForm.AttendeePhone" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="attendeeOrganization" class="form-label">Organization</label>
+                                        <InputText id="attendeeOrganization" 
+                                                  class="form-control" 
+                                                  @bind-Value="registrationForm.AttendeeOrganization" 
+                                                  placeholder="Enter your organization" />
+                                        <ValidationMessage For="() => registrationForm.AttendeeOrganization" />
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="specialRequirements" class="form-label">Special Requirements</label>
+                                    <InputTextArea id="specialRequirements" 
+                                                  class="form-control" 
+                                                  @bind-Value="registrationForm.SpecialRequirements" 
+                                                  rows="3"
+                                                  placeholder="Any special dietary requirements, accessibility needs, etc." />
+                                    <ValidationMessage For="() => registrationForm.SpecialRequirements" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Ticket Information -->
+                        @if (SelectedTicketType != null)
+                        {
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-ticket me-2"></i>Selected Ticket
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">@SelectedTicketType.TypeName</h6>
+                                            @if (!string.IsNullOrEmpty(SelectedTicketType.Description))
+                                            {
+                                                <p class="text-muted mb-0">@SelectedTicketType.Description</p>
+                                            }
+                                        </div>
+                                        <div class="text-end">
+                                            @if (SelectedTicketType.Price > 0)
+                                            {
+                                                <div class="fw-bold text-primary fs-5">$@SelectedTicketType.Price</div>
+                                            }
+                                            else
+                                            {
+                                                <div class="fw-bold text-success fs-5">FREE</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">
+                            <i class="bi bi-x me-2"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@(isSubmitting)">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Registering...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check me-2"></i>
+                                <span>Complete Registration</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal {
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+    }
+
+    .modal-dialog {
+        position: relative;
+        z-index: 1051;
+        margin: 2rem auto;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public int EventId { get; set; }
+    [Parameter] public string EventName { get; set; } = "";
+    [Parameter] public TicketTypeDto? SelectedTicketType { get; set; }
+    [Parameter] public EventCallback OnRegistrationCompleted { get; set; }
+
+    private CreateRegistrationDto registrationForm = new();
+    private bool isVisible;
+    private bool isLoading = false;
+    private bool isSubmitting = false;
+    private bool registrationSuccess = false;
+    private string errorMessage = "";
+    private RegistrationDto? registrationResult;
+    private UserDto? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            registrationForm.AttendeeName = currentUser.Name;
+            registrationForm.AttendeeEmail = currentUser.Email;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isVisible = IsVisible;
+        
+        if (isVisible && SelectedTicketType != null)
+        {
+            registrationForm = new CreateRegistrationDto
+            {
+                EventID = EventId,
+                UserID = currentUser?.UserID,
+                AttendeeName = currentUser?.Name ?? "",
+                AttendeeEmail = currentUser?.Email ?? "",
+                TicketSelections = new List<TicketSelectionDto>
+                {
+                    new TicketSelectionDto { TicketTypeID = SelectedTicketType.TicketTypeID, Quantity = 1 }
+                }
+            };
+            
+            registrationSuccess = false;
+            errorMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task SubmitRegistration()
+    {
+        isSubmitting = true;
+        errorMessage = "";
+
+        try
+        {
+            ApiResponse<RegistrationDto>? result;
+            
+            if (currentUser != null)
+            {
+                result = await RegistrationService.RegisterForEventAsync(registrationForm);
+            }
+            else
+            {
+                result = await RegistrationService.RegisterAsGuestAsync(registrationForm);
+            }
+
+            if (result?.Success == true)
+            {
+                registrationResult = result.Data;
+                registrationSuccess = true;
+                await OnRegistrationCompleted.InvokeAsync();
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "An error occurred during registration.";
+                if (result?.Errors?.Any() == true)
+                {
+                    errorMessage += " " + string.Join(" ", result.Errors);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An unexpected error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CloseModal()
+    {
+        isVisible = false;
+        registrationSuccess = false;
+        errorMessage = "";
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+}

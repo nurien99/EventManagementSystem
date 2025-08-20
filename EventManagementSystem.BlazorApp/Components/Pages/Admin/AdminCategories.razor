@@ -1,0 +1,320 @@
+@page "/admin/categories"
+@using EventManagementSystem.Core.DTOs
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Category Management - Admin</PageTitle>
+
+<div class="admin-page">
+    <div class="admin-container">
+        <!-- Page Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="admin-title">
+                        <i class="bi bi-tags me-3"></i>Category Management
+                    </h1>
+                    <p class="admin-subtitle">
+                        Manage event categories and classifications
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" @onclick="RefreshCategories">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                    </button>
+                    <button class="btn btn-success" @onclick="ShowAddCategoryModal">
+                        <i class="bi bi-plus-circle me-2"></i>Add Category
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Categories Grid -->
+        @if (isLoading)
+        {
+            <div class="admin-loading">
+                <div class="d-flex justify-content-center align-items-center py-5">
+                    <div class="spinner-border text-primary me-3" role="status"></div>
+                    <span>Loading categories...</span>
+                </div>
+            </div>
+        }
+        else if (hasError)
+        {
+            <div class="alert alert-danger">
+                <h5><i class="bi bi-exclamation-triangle me-2"></i>Error Loading Categories</h5>
+                <p>@errorMessage</p>
+                <button class="btn btn-danger" @onclick="RefreshCategories">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                </button>
+            </div>
+        }
+        else if (!categories.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-tags"></i>
+                </div>
+                <h3>No Categories Found</h3>
+                <p>Start by creating your first event category.</p>
+                <button class="btn btn-primary" @onclick="ShowAddCategoryModal">
+                    <i class="bi bi-plus-circle me-2"></i>Add First Category
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="categories-grid">
+                @foreach (var category in categories)
+                {
+                    <div class="category-card">
+                        <div class="category-header">
+                            <div class="category-info">
+                                <h4>@category.Name</h4>
+                                <p>@category.Description</p>
+                            </div>
+                            <div class="category-actions">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => EditCategory(category.CategoryID)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCategory(category.CategoryID, category.Name)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="category-stats">
+                            <div class="stat-item">
+                                <i class="bi bi-calendar-event"></i>
+                                <span>@category.EventCount events</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Add/Edit Category Modal -->
+        @if (showModal)
+        {
+            <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                @(editingCategory != null ? "Edit Category" : "Add New Category")
+                            </h5>
+                            <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form @onsubmit="SaveCategory" @onsubmit:preventDefault="true">
+                                <div class="mb-3">
+                                    <label for="categoryName" class="form-label">Category Name *</label>
+                                    <input type="text" id="categoryName" class="form-control" 
+                                           @bind="categoryForm.Name" required maxlength="50" />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="categoryDescription" class="form-label">Description</label>
+                                    <textarea id="categoryDescription" class="form-control" rows="3" 
+                                              @bind="categoryForm.Description" maxlength="200"></textarea>
+                                    <div class="form-text">Optional description for this category</div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">
+                                Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" @onclick="SaveCategory" 
+                                    disabled="@(string.IsNullOrWhiteSpace(categoryForm.Name) || isSaving)">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                @(editingCategory != null ? "Update" : "Create")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<CategoryDto> categories = new();
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    private bool showModal = false;
+    private bool isSaving = false;
+    private CategoryDto? editingCategory = null;
+    private CategoryFormDto categoryForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            StateHasChanged();
+
+            var response = await ApiService.GetAsync<List<CategoryDto>>("/api/categories");
+            
+            if (response != null && response.Success && response.Data != null)
+            {
+                categories = response.Data;
+            }
+            else
+            {
+                hasError = true;
+                errorMessage = response?.Message ?? "Failed to load categories";
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = $"Error loading categories: {ex.Message}";
+            Console.WriteLine($"Error in LoadCategories: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshCategories()
+    {
+        await LoadCategories();
+    }
+
+    private void ShowAddCategoryModal()
+    {
+        editingCategory = null;
+        categoryForm = new CategoryFormDto();
+        showModal = true;
+        StateHasChanged();
+    }
+
+    private void EditCategory(int categoryId)
+    {
+        editingCategory = categories.FirstOrDefault(c => c.CategoryID == categoryId);
+        if (editingCategory != null)
+        {
+            categoryForm = new CategoryFormDto
+            {
+                Name = editingCategory.Name,
+                Description = editingCategory.Description
+            };
+            showModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteCategory(int categoryId, string categoryName)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"Are you sure you want to delete the category '{categoryName}'? This action cannot be undone.");
+        
+        if (confirmed)
+        {
+            try
+            {
+                var success = await ApiService.DeleteAsync($"/api/categories/{categoryId}");
+                
+                if (success)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Category deleted successfully!");
+                    await LoadCategories();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Failed to delete category");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error deleting category: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveCategory()
+    {
+        if (string.IsNullOrWhiteSpace(categoryForm.Name))
+            return;
+
+        try
+        {
+            isSaving = true;
+            StateHasChanged();
+
+            ApiResponse<CategoryDto>? response;
+
+            if (editingCategory != null)
+            {
+                // Update existing category
+                response = await ApiService.PutAsync<CategoryDto>(
+                    $"/api/categories/{editingCategory.CategoryID}", categoryForm);
+            }
+            else
+            {
+                // Create new category
+                response = await ApiService.PostAsync<CategoryDto>(
+                    "/api/categories", categoryForm);
+            }
+
+            if (response != null && response.Success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", 
+                    editingCategory != null ? "Category updated successfully!" : "Category created successfully!");
+                
+                CloseModal();
+                await LoadCategories();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", 
+                    response?.Message ?? "Failed to save category");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error saving category: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        editingCategory = null;
+        categoryForm = new CategoryFormDto();
+        StateHasChanged();
+    }
+
+    public class CategoryDto
+    {
+        public int CategoryID { get; set; }
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int EventCount { get; set; }
+    }
+
+    public class CategoryFormDto
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+}

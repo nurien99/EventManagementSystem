@@ -15,10 +15,12 @@ namespace EventManagementSystem.Api.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, ILogger<UsersController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -221,14 +223,21 @@ namespace EventManagementSystem.Api.Controllers
         /// <returns>Verification result</returns>
         [HttpPost("verify-email")]
         [AllowAnonymous]
-        public async Task<ActionResult<ApiResponse<bool>>> VerifyEmail([FromQuery] string token, [FromQuery] string email)
+        public async Task<ActionResult<ApiResponse<bool>>> VerifyEmail([FromQuery] string email, [FromQuery] string token)
         {
+            _logger.LogInformation("🔍 Verify email API endpoint called with Email: {HasEmail}, Token: {HasToken}", 
+                !string.IsNullOrWhiteSpace(email), !string.IsNullOrWhiteSpace(token));
+
             if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(email))
             {
+                _logger.LogWarning("❌ Invalid verification parameters - Email: {Email}, Token length: {TokenLength}", 
+                    email ?? "null", token?.Length ?? 0);
                 return BadRequest(ApiResponse<bool>.ErrorResult("Invalid verification parameters."));
             }
 
             var result = await _userService.VerifyEmailAsync(email, token);
+
+            _logger.LogInformation("📧 Verification result: Success={Success}, Message={Message}", result.Success, result.Message);
 
             if (!result.Success)
             {
@@ -280,6 +289,85 @@ namespace EventManagementSystem.Api.Controllers
             var result = await _userService.SendEmailVerificationAsync(user.UserID);
 
             return Ok(ApiResponse<bool>.SuccessResult(true, "If an account with that email exists, a verification email has been sent."));
+        }
+
+        /// <summary>
+        /// Upgrade current user from Attendee to EventOrganizer
+        /// </summary>
+        /// <returns>Updated user information</returns>
+        [HttpPost("upgrade-to-organizer")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<UserDto>>> UpgradeToOrganizer()
+        {
+            var currentUserId = GetCurrentUserId();
+            var result = await _userService.UpgradeToOrganizerAsync(currentUserId);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Update current user's profile
+        /// </summary>
+        /// <param name="updateProfileDto">Updated profile information</param>
+        /// <returns>Updated user information</returns>
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<UserDto>>> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(ApiResponse<UserDto>.ErrorResult("Validation failed.", errors));
+            }
+
+            var currentUserId = GetCurrentUserId();
+            var result = await _userService.UpdateProfileAsync(currentUserId, updateProfileDto);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Change current user's password
+        /// </summary>
+        /// <param name="changePasswordDto">Password change information</param>
+        /// <returns>Success message</returns>
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(ApiResponse<bool>.ErrorResult("Validation failed.", errors));
+            }
+
+            var currentUserId = GetCurrentUserId();
+            var result = await _userService.ChangePasswordAsync(currentUserId, changePasswordDto);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
 
         // Add this helper method to your UsersController (in the private helper methods section)

@@ -1,0 +1,598 @@
+@page "/events/{EventId:int}/dashboard"
+@using EventManagementSystem.Core
+@inject TicketService TicketService
+@inject EventService EventService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@attribute [Authorize(Roles = "EventOrganizer,Admin")]
+@implements IAsyncDisposable
+
+<PageTitle>Check-In Dashboard - Event Management System</PageTitle>
+
+<div class="dashboard-container">
+    <div class="page-header">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/events">My Events</a></li>
+                <li class="breadcrumb-item">@eventName</li>
+                <li class="breadcrumb-item active" aria-current="page">Check-In Dashboard</li>
+            </ol>
+        </nav>
+        
+        <div class="header-content">
+            <div class="header-left">
+                <h1 class="page-title">
+                    <i class="bi bi-speedometer2 me-3"></i>
+                    Check-In Dashboard
+                </h1>
+                <p class="page-subtitle">Real-time monitoring for @eventName</p>
+            </div>
+            <div class="header-right">
+                <div class="live-indicator @(isLive ? "active" : "")">
+                    <span class="pulse"></span>
+                    @(isLive ? "LIVE" : "OFFLINE")
+                </div>
+                <div class="last-updated">
+                    Last updated: @lastUpdated.ToString("HH:mm:ss")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Loading dashboard...</p>
+        </div>
+    }
+    else if (hasError)
+    {
+        <div class="error-state">
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Error:</strong> @errorMessage
+                <button class="btn btn-outline-danger btn-sm ms-3" @onclick="LoadDashboardData">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="dashboard-content">
+            <!-- Quick Actions -->
+            <div class="quick-actions mb-4">
+                <div class="row g-3">
+                    <div class="col-auto">
+                        <a href="/events/@EventId/checkin" class="btn btn-primary">
+                            <i class="bi bi-qr-code-scan me-2"></i>
+                            Start Check-In Scanner
+                        </a>
+                    </div>
+                    <div class="col-auto">
+                        <a href="/events/@EventId/assistants" class="btn btn-outline-primary">
+                            <i class="bi bi-people me-2"></i>
+                            Manage Assistants
+                        </a>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-outline-secondary" @onclick="ExportCheckInData">
+                            <i class="bi bi-download me-2"></i>
+                            Export Data
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-outline-secondary" @onclick="ToggleAutoRefresh">
+                            <i class="bi @(autoRefresh ? "bi-pause" : "bi-play") me-2"></i>
+                            @(autoRefresh ? "Pause" : "Start") Auto-Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Overview -->
+            <div class="stats-grid">
+                <div class="row g-4">
+                    <div class="col-lg-3 col-md-6">
+                        <div class="stat-card total">
+                            <div class="stat-header">
+                                <h3>Total Tickets</h3>
+                                <i class="bi bi-ticket-perforated"></i>
+                            </div>
+                            <div class="stat-value">@totalTickets</div>
+                            <div class="stat-footer">
+                                <span class="text-muted">All registered attendees</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3 col-md-6">
+                        <div class="stat-card checked-in">
+                            <div class="stat-header">
+                                <h3>Checked In</h3>
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div class="stat-value">@checkedInCount</div>
+                            <div class="stat-footer">
+                                <span class="progress-text">@checkedInPercentage% of total</span>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" style="width: @(checkedInPercentage)%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3 col-md-6">
+                        <div class="stat-card pending">
+                            <div class="stat-header">
+                                <h3>Pending</h3>
+                                <i class="bi bi-clock-fill"></i>
+                            </div>
+                            <div class="stat-value">@pendingCount</div>
+                            <div class="stat-footer">
+                                <span class="text-muted">Not yet checked in</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3 col-md-6">
+                        <div class="stat-card hourly">
+                            <div class="stat-header">
+                                <h3>This Hour</h3>
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="stat-value">@thisHourCount</div>
+                            <div class="stat-footer">
+                                <span class="trend @(hourlyTrend >= 0 ? "up" : "down")">
+                                    <i class="bi bi-arrow-@(hourlyTrend >= 0 ? "up" : "down")"></i>
+                                    @Math.Abs(hourlyTrend)% vs last hour
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts and Recent Activity -->
+            <div class="dashboard-grid">
+                <div class="row g-4">
+                    <!-- Check-In Timeline Chart -->
+                    <div class="col-lg-8">
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-graph-up me-2"></i>
+                                    Check-In Timeline
+                                </h5>
+                                <div class="chart-controls">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn @(timeRange == "hour" ? "btn-primary" : "btn-outline-secondary")" 
+                                                @onclick="@(() => SetTimeRange("hour"))">Hour</button>
+                                        <button type="button" class="btn @(timeRange == "day" ? "btn-primary" : "btn-outline-secondary")" 
+                                                @onclick="@(() => SetTimeRange("day"))">Day</button>
+                                        <button type="button" class="btn @(timeRange == "week" ? "btn-primary" : "btn-outline-secondary")" 
+                                                @onclick="@(() => SetTimeRange("week"))">Week</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" id="checkInChart">
+                                    <div class="chart-placeholder">
+                                        <i class="bi bi-graph-up display-4 text-muted"></i>
+                                        <p class="text-muted mt-3">Check-in timeline will appear here</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Check-Ins -->
+                    <div class="col-lg-4">
+                        <div class="card activity-card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-clock-history me-2"></i>
+                                    Recent Check-Ins
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="activity-list">
+                                    @if (recentCheckIns.Any())
+                                    {
+                                        @foreach (var checkIn in recentCheckIns.Take(10))
+                                        {
+                                            <div class="activity-item">
+                                                <div class="activity-avatar">
+                                                    @checkIn.AttendeeName.Substring(0, 1).ToUpper()
+                                                </div>
+                                                <div class="activity-details">
+                                                    <div class="activity-name">@checkIn.AttendeeName</div>
+                                                    <div class="activity-info">
+                                                        <span class="badge bg-light text-dark">@checkIn.TicketTypeName</span>
+                                                        <small class="text-muted ms-2">
+                                                            @checkIn.CheckedInAt?.ToString("HH:mm")
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="empty-activity">
+                                            <i class="bi bi-person-check display-4 text-muted"></i>
+                                            <p class="text-muted mt-3">No check-ins yet</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Attendee List -->
+            <div class="attendee-section">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people me-2"></i>
+                            All Attendees (@allAttendees.Count)
+                        </h5>
+                        <div class="attendee-filters">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" placeholder="Search attendees..." 
+                                       @bind="searchFilter" @oninput="FilterAttendees">
+                                <select class="form-select" @onchange="OnStatusFilterChange">
+                                    <option value="all">All Status</option>
+                                    <option value="checked-in">Checked In</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Attendee</th>
+                                        <th>Ticket Type</th>
+                                        <th>Reference</th>
+                                        <th>Status</th>
+                                        <th>Check-In Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var attendee in filteredAttendees)
+                                    {
+                                        <tr class="@(attendee.CheckedInAt.HasValue ? "table-success-subtle" : "")">
+                                            <td>
+                                                <div class="attendee-info">
+                                                    <div class="attendee-avatar">
+                                                        @attendee.AttendeeName.Substring(0, 1).ToUpper()
+                                                    </div>
+                                                    <div class="attendee-details">
+                                                        <strong>@attendee.AttendeeName</strong>
+                                                        <small class="text-muted d-block">@attendee.AttendeeEmail</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary">@attendee.TicketTypeName</span>
+                                            </td>
+                                            <td>
+                                                <code class="small">@attendee.UniqueReferenceCode</code>
+                                            </td>
+                                            <td>
+                                                @if (attendee.CheckedInAt.HasValue)
+                                                {
+                                                    <span class="badge bg-success">
+                                                        <i class="bi bi-check-circle me-1"></i>Checked In
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">
+                                                        <i class="bi bi-clock me-1"></i>Pending
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (attendee.CheckedInAt.HasValue)
+                                                {
+                                                    <span>@attendee.CheckedInAt.Value.ToString("MMM dd, HH:mm")</span>
+                                                    <small class="text-muted d-block">
+                                                        by @attendee.CheckedInByUser
+                                                    </small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Not checked in</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (attendee.CheckedInAt.HasValue)
+                                                {
+                                                    <button class="btn btn-outline-warning btn-sm" 
+                                                            @onclick="() => UndoCheckIn(attendee.IssuedTicketID)">
+                                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-primary btn-sm" 
+                                                            @onclick="() => ManualCheckIn(attendee.UniqueReferenceCode)">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (!filteredAttendees.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-search display-4 text-muted"></i>
+                                <h5 class="text-muted mt-3">No attendees found</h5>
+                                <p class="text-muted">Try adjusting your search or filter criteria.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int EventId { get; set; }
+
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    private string eventName = "";
+    private DateTime lastUpdated = DateTime.Now;
+    private bool isLive = true;
+    private bool autoRefresh = true;
+
+    // Statistics
+    private int totalTickets = 0;
+    private int checkedInCount = 0;
+    private int pendingCount = 0;
+    private int checkedInPercentage = 0;
+    private int thisHourCount = 0;
+    private int hourlyTrend = 0;
+
+    // Data
+    private List<TicketCheckInDetails> allAttendees = new();
+    private List<TicketCheckInDetails> recentCheckIns = new();
+    private List<TicketCheckInDetails> filteredAttendees = new();
+
+    // Filters
+    private string searchFilter = "";
+    private string statusFilter = "all";
+    private string timeRange = "day";
+
+    // Auto-refresh timer
+    private Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEventDetails();
+        await LoadDashboardData();
+        
+        if (autoRefresh)
+        {
+            StartAutoRefresh();
+        }
+    }
+
+    private async Task LoadEventDetails()
+    {
+        try
+        {
+            var eventResult = await EventService.GetEventByIdAsync(EventId);
+            if (eventResult != null)
+            {
+                eventName = eventResult.EventName;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading event details: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+
+            var result = await TicketService.GetEventCheckInsAsync(EventId);
+            if (result?.Success == true && result.Data != null)
+            {
+                allAttendees = result.Data.OrderByDescending(a => a.CheckedInAt).ToList();
+                CalculateStatistics();
+                UpdateRecentCheckIns();
+                FilterAttendees();
+                
+                lastUpdated = DateTime.Now;
+                isLive = true;
+            }
+            else
+            {
+                hasError = true;
+                errorMessage = result?.Message ?? "Failed to load dashboard data.";
+                isLive = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = "An error occurred while loading dashboard data.";
+            isLive = false;
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CalculateStatistics()
+    {
+        totalTickets = allAttendees.Count;
+        checkedInCount = allAttendees.Count(a => a.CheckedInAt.HasValue);
+        pendingCount = totalTickets - checkedInCount;
+        checkedInPercentage = totalTickets > 0 ? (int)Math.Round((double)checkedInCount / totalTickets * 100) : 0;
+        
+        var oneHourAgo = DateTime.UtcNow.AddHours(-1);
+        thisHourCount = allAttendees.Count(a => a.CheckedInAt.HasValue && a.CheckedInAt >= oneHourAgo);
+        
+        var twoHoursAgo = DateTime.UtcNow.AddHours(-2);
+        var previousHourCount = allAttendees.Count(a => a.CheckedInAt.HasValue && 
+            a.CheckedInAt >= twoHoursAgo && a.CheckedInAt < oneHourAgo);
+        
+        hourlyTrend = previousHourCount > 0 ? 
+            (int)Math.Round(((double)(thisHourCount - previousHourCount) / previousHourCount) * 100) : 0;
+    }
+
+    private void UpdateRecentCheckIns()
+    {
+        recentCheckIns = allAttendees
+            .Where(a => a.CheckedInAt.HasValue)
+            .OrderByDescending(a => a.CheckedInAt)
+            .ToList();
+    }
+
+    private void FilterAttendees()
+    {
+        filteredAttendees = allAttendees.Where(a =>
+        {
+            bool matchesSearch = string.IsNullOrEmpty(searchFilter) ||
+                a.AttendeeName.Contains(searchFilter, StringComparison.OrdinalIgnoreCase) ||
+                a.AttendeeEmail.Contains(searchFilter, StringComparison.OrdinalIgnoreCase);
+
+            bool matchesStatus = statusFilter == "all" ||
+                (statusFilter == "checked-in" && a.CheckedInAt.HasValue) ||
+                (statusFilter == "pending" && !a.CheckedInAt.HasValue);
+
+            return matchesSearch && matchesStatus;
+        }).ToList();
+    }
+
+    private void OnStatusFilterChange(ChangeEventArgs e)
+    {
+        statusFilter = e.Value?.ToString() ?? "all";
+        FilterAttendees();
+        StateHasChanged();
+    }
+
+    private async Task ManualCheckIn(string referenceCode)
+    {
+        try
+        {
+            var request = new CheckInTicketRequest
+            {
+                QRCodeData = referenceCode
+            };
+
+            var result = await TicketService.CheckInTicketAsync(request);
+            if (result?.Success == true)
+            {
+                await JSRuntime.InvokeVoidAsync("showAlert", "success", "Check-in successful!");
+                await LoadDashboardData();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("showAlert", "error", result?.Message ?? "Check-in failed.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("showAlert", "error", "An error occurred during check-in.");
+            Console.WriteLine($"Error during manual check-in: {ex.Message}");
+        }
+    }
+
+    private async Task UndoCheckIn(int ticketId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to undo this check-in?"))
+        {
+            try
+            {
+                var result = await TicketService.UndoCheckInAsync(ticketId);
+                if (result?.Success == true)
+                {
+                    await JSRuntime.InvokeVoidAsync("showAlert", "success", "Check-in undone successfully!");
+                    await LoadDashboardData();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("showAlert", "error", result?.Message ?? "Failed to undo check-in.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("showAlert", "error", "An error occurred while undoing check-in.");
+                Console.WriteLine($"Error undoing check-in: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task ExportCheckInData()
+    {
+        await JSRuntime.InvokeVoidAsync("showAlert", "info", "Export feature coming soon!");
+    }
+
+    private void SetTimeRange(string range)
+    {
+        timeRange = range;
+        StateHasChanged();
+    }
+
+    private void ToggleAutoRefresh()
+    {
+        autoRefresh = !autoRefresh;
+        if (autoRefresh)
+        {
+            StartAutoRefresh();
+        }
+        else
+        {
+            StopAutoRefresh();
+        }
+    }
+
+    private void StartAutoRefresh()
+    {
+        refreshTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadDashboardData();
+            });
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private void StopAutoRefresh()
+    {
+        refreshTimer?.Dispose();
+        refreshTimer = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        refreshTimer?.Dispose();
+    }
+}

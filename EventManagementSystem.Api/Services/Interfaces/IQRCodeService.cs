@@ -9,6 +9,7 @@
         Task<string> GenerateTicketQRCodeBase64Async(string ticketData);
         Task<string> GenerateTicketQRCodeBase64Async(int registrationId, int ticketTypeId, string userEmail);
         Task<TicketQRPayload?> ExtractTicketPayloadAsync(string qrData);
+        Task<byte[]> GenerateQRCodeImageAsync(string qrData);
 
     }
 }

@@ -1,0 +1,327 @@
+﻿@using EventManagementSystem.Core
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
+
+<!-- Mobile navigation now handled by MainLayout -->
+
+<nav class="sidebar">
+<!-- Sidebar Header -->
+<div class="sidebar-header">
+    <a href="/dashboard" class="sidebar-brand">
+        <div class="brand-icon">
+            <i class="bi bi-calendar-check"></i>
+        </div>
+        <div class="brand-text">
+            <span class="brand-name">Event Manager</span>
+            <span class="brand-subtitle">Lagoon Edition</span>
+        </div>
+    </a>
+</div>
+
+<!-- Enhanced Role-Based Navigation Menu -->
+<nav class="sidebar-nav">
+    <!-- Always Show Dashboard -->
+    <div class="nav-section">
+        <div class="nav-item">
+            <NavLink class="nav-link primary" href="/dashboard" Match="NavLinkMatch.All">
+                <span class="nav-icon"><i class="bi bi-speedometer2"></i></span>
+                <span class="nav-text">Dashboard</span>
+            </NavLink>
+        </div>
+    </div>
+
+    @if (!isLoading)
+    {
+        <!-- Role-Based Navigation -->
+        <AuthorizeView>
+            <Authorized>
+
+            <!-- Common Navigation for All Users -->
+            <div class="nav-divider"></div>
+            <div class="nav-section">
+                <div class="nav-section-title">
+                    <i class="bi bi-compass me-2"></i>Explore
+                </div>
+
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="/events">
+                        <span class="nav-icon"><i class="bi bi-search"></i></span>
+                        <span class="nav-text">Browse Events</span>
+                    </NavLink>
+                </div>
+            </div>
+            @if (currentUser?.Role == UserRole.EventOrganizer || currentUser?.Role == UserRole.Admin)
+            {
+                <!-- Event Organizer Navigation -->
+                <div class="nav-divider"></div>
+                <div class="nav-section">
+                    <div class="nav-section-title">
+                        <i class="bi bi-calendar-check me-2"></i>Event Management
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/my-events">
+                            <span class="nav-icon"><i class="bi bi-calendar-event"></i></span>
+                            <span class="nav-text">My Events</span>
+                            <span class="nav-badge">@(eventCount > 0 ? eventCount.ToString() : "")</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link create-action" href="/create-event">
+                            <span class="nav-icon"><i class="bi bi-plus-circle"></i></span>
+                            <span class="nav-text">Create Event</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/analytics">
+                            <span class="nav-icon"><i class="bi bi-graph-up"></i></span>
+                            <span class="nav-text">Analytics</span>
+                        </NavLink>
+                    </div>
+                </div>
+
+                <!-- Personal Section for Organizers -->
+                <div class="nav-divider"></div>
+                <div class="nav-section secondary">
+                    <div class="nav-section-title">
+                        <i class="bi bi-person me-2"></i>Personal
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link secondary" href="/my-registrations">
+                            <span class="nav-icon"><i class="bi bi-ticket-perforated"></i></span>
+                            <span class="nav-text">My Tickets</span>
+                            <span class="nav-badge">@(ticketCount > 0 ? ticketCount.ToString() : "")</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link secondary" href="/favorites">
+                            <span class="nav-icon"><i class="bi bi-heart"></i></span>
+                            <span class="nav-text">Favorites</span>
+                        </NavLink>
+                    </div>
+                </div>
+            }
+            else if (currentUser?.Role == UserRole.Attendee)
+            {
+                <!-- Attendee Navigation -->
+                <div class="nav-divider"></div>
+                <div class="nav-section">
+                    <div class="nav-section-title">
+                        <i class="bi bi-calendar-heart me-2"></i>Events
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link primary" href="/events">
+                            <span class="nav-icon"><i class="bi bi-search"></i></span>
+                            <span class="nav-text">Browse Events</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/my-registrations">
+                            <span class="nav-icon"><i class="bi bi-ticket-perforated"></i></span>
+                            <span class="nav-text">My Tickets</span>
+                            <span class="nav-badge">@(ticketCount > 0 ? ticketCount.ToString() : "")</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/favorites">
+                            <span class="nav-icon"><i class="bi bi-heart"></i></span>
+                            <span class="nav-text">Favorites</span>
+                        </NavLink>
+                    </div>
+                </div>
+
+                <!-- Upgrade Section for Attendees -->
+                <div class="nav-divider"></div>
+                <div class="nav-section upgrade">
+                    <div class="nav-item">
+                        <a href="/upgrade" class="nav-link upgrade-link">
+                            <span class="nav-icon"><i class="bi bi-star"></i></span>
+                            <span class="nav-text">Become Organizer</span>
+                            <span class="upgrade-arrow"><i class="bi bi-arrow-right"></i></span>
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <!-- Admin Section (Show only for admins) -->
+            @if (currentUser?.Role == UserRole.Admin)
+            {
+                <div class="nav-divider"></div>
+                <div class="nav-section admin">
+                    <div class="nav-section-title">
+                        <i class="bi bi-shield-check me-2"></i>Administration
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/admin">
+                            <span class="nav-icon"><i class="bi bi-speedometer2"></i></span>
+                            <span class="nav-text">Admin Dashboard</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/admin/users">
+                            <span class="nav-icon"><i class="bi bi-people"></i></span>
+                            <span class="nav-text">Users</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/admin/categories">
+                            <span class="nav-icon"><i class="bi bi-tags"></i></span>
+                            <span class="nav-text">Categories</span>
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="/admin/venues">
+                            <span class="nav-icon"><i class="bi bi-geo-alt"></i></span>
+                            <span class="nav-text">Venues</span>
+                        </NavLink>
+                    </div>
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+    }
+    else
+    {
+        <!-- Loading State -->
+        <div class="nav-section">
+            <div class="nav-loading">
+                <i class="bi bi-arrow-clockwise spin"></i>
+                <span>Loading...</span>
+            </div>
+        </div>
+    }
+</nav>
+
+<!-- Enhanced Sidebar Footer -->
+<div class="sidebar-footer">
+    <div class="nav-item">
+        <NavLink class="nav-link" href="/help">
+            <span class="nav-icon"><i class="bi bi-question-circle"></i></span>
+            <span class="nav-text">Help & Support</span>
+        </NavLink>
+    </div>
+    <div class="sidebar-version">
+        <small class="text-muted">v1.0.0</small>
+    </div>
+</div>
+</nav>
+
+@code {
+    [Parameter] public bool IsMobileOpen { get; set; }
+    [Parameter] public EventCallback OnMobileMenuToggle { get; set; }
+    
+    private User? currentUser;
+    private int eventCount = 0;
+    private int ticketCount = 0;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadUserData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in NavMenu OnInitializedAsync: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserData()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (authState?.User?.Identity?.IsAuthenticated == true)
+            {
+                Console.WriteLine("User is authenticated");
+
+                // Try multiple claim types for user ID
+                var userIdClaim = authState.User.FindFirst("userId") ??
+                                 authState.User.FindFirst("sub") ??
+                                 authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    Console.WriteLine($"Found user ID: {userId}");
+
+                    var userName = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ??
+                                  authState.User.Identity.Name ??
+                                  "User";
+
+                    Console.WriteLine($"Found user name: {userName}");
+
+                    currentUser = new User
+                    {
+                        UserID = userId,
+                        Name = userName,
+                        Role = GetUserRole(authState.User)
+                    };
+
+                    // Set placeholder counts - TODO: Replace with actual service calls
+                    eventCount = currentUser.Role == UserRole.EventOrganizer || currentUser.Role == UserRole.Admin ? 1 : 0;
+                    ticketCount = 0;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Set default values on error
+            currentUser = null;
+            eventCount = 0;
+            ticketCount = 0;
+        }
+    }
+
+    private UserRole GetUserRole(System.Security.Claims.ClaimsPrincipal user)
+    {
+        try
+        {
+            // Try ClaimTypes.Role first (this is the standard claim type)
+            var roleClaim = user.FindFirst(System.Security.Claims.ClaimTypes.Role) ?? user.FindFirst("role");
+            if (roleClaim != null)
+            {
+                Console.WriteLine($"Found role claim: {roleClaim.Value}");
+                return roleClaim.Value switch
+                {
+                    "Admin" => UserRole.Admin,
+                    "EventOrganizer" => UserRole.EventOrganizer,
+                    "Attendee" => UserRole.Attendee,
+                    _ => UserRole.Attendee
+                };
+            }
+            // If no role claim found, default to Attendee
+        }
+        catch (Exception)
+        {
+            // If error occurs, default to Attendee role
+        }
+        return UserRole.Attendee;
+    }
+
+    // Mobile menu functionality now handled by MainLayout
+
+    // Simple User class for navigation (can be moved to Core project later)
+    public class User
+    {
+        public int UserID { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public UserRole Role { get; set; }
+    }
+}

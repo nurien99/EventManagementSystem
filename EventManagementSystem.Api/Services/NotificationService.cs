@@ -1,9 +1,11 @@
 ﻿using EventManagementSystem.Api.Data;
 using EventManagementSystem.Api.Services.Interfaces;
+using EventManagementSystem.Api.Models;
 using EventManagementSystem.Core;
 using EventManagementSystem.Core.DTOs;
 using EventManagementSystem.Core.DTOs.Email;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace EventManagementSystem.Api.Services
 {
@@ -13,17 +15,20 @@ namespace EventManagementSystem.Api.Services
         private readonly IEmailService _emailService;
         private readonly IQRCodeService _qrCodeService;
         private readonly ILogger<NotificationService> _logger;
+        private readonly FrontendSettings _frontendSettings;
 
         public NotificationService(
             ApplicationDbContext context,
             IEmailService emailService,
             IQRCodeService qrCodeService,
-            ILogger<NotificationService> logger)
+            ILogger<NotificationService> logger,
+            IOptions<FrontendSettings> frontendSettings)
         {
             _context = context;
             _emailService = emailService;
             _qrCodeService = qrCodeService;
             _logger = logger;
+            _frontendSettings = frontendSettings.Value;
         }
 
         #region User Account Notifications
@@ -42,9 +47,12 @@ namespace EventManagementSystem.Api.Services
                 {
                     UserName = user.Name,
                     Email = user.Email,
-                    // Fix: Use the correct API endpoint URL for verification
-                    EmailVerificationUrl = $"https://localhost:7203/api/Users/verify-email?token={user.EmailVerificationToken}&email={Uri.EscapeDataString(user.Email)}",
-                    LoginUrl = "https://localhost:7203/login" // This would be your frontend login page
+                    SiteName = _frontendSettings.AppName,
+                    SiteUrl = _frontendSettings.BaseUrl,
+                    // Use frontend verification page that calls API
+                    EmailVerificationUrl = $"{_frontendSettings.BaseUrl}/verify-email?token={user.EmailVerificationToken}&email={Uri.EscapeDataString(user.Email)}",
+                    LoginUrl = $"{_frontendSettings.BaseUrl}/login",
+                    SentAt = DateTime.UtcNow
                 };
 
                 var result = await _emailService.SendTemplateEmailAsync(
@@ -87,8 +95,11 @@ namespace EventManagementSystem.Api.Services
                 {
                     UserName = user.Name,
                     Email = user.Email,
-                    EmailVerificationUrl = $"https://localhost:7203/verify-email?token={user.EmailVerificationToken}&email={user.Email}",
-                    LoginUrl = "https://localhost:7203/login"
+                    SiteName = _frontendSettings.AppName,
+                    SiteUrl = _frontendSettings.BaseUrl,
+                    EmailVerificationUrl = $"{_frontendSettings.BaseUrl}/verify-email?token={user.EmailVerificationToken}&email={Uri.EscapeDataString(user.Email)}",
+                    LoginUrl = $"{_frontendSettings.BaseUrl}/login",
+                    SentAt = DateTime.UtcNow
                 };
 
                 var result = await _emailService.SendTemplateEmailAsync(
@@ -444,6 +455,86 @@ namespace EventManagementSystem.Api.Services
             {
                 _logger.LogError(ex, "❌ Error sending event update for event {EventId}", eventId);
                 return ApiResponse<bool>.ErrorResult("An error occurred while sending event update", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<ApiResponse<bool>> SendTicketEmailAsync(int ticketId)
+        {
+            try
+            {
+                _logger.LogInformation("📧 Starting ticket email delivery for ticket {TicketId}", ticketId);
+
+                var ticket = await _context.IssuedTickets
+                    .Include(it => it.Registration)
+                        .ThenInclude(r => r.Event)
+                            .ThenInclude(e => e.Venue)
+                    .Include(it => it.TicketType)
+                    .FirstOrDefaultAsync(it => it.IssuedTicketID == ticketId);
+
+                if (ticket == null)
+                {
+                    _logger.LogError("❌ Ticket not found for ID: {TicketId}", ticketId);
+                    return ApiResponse<bool>.ErrorResult("Ticket not found");
+                }
+
+                // Generate QR code as Base64 string
+                string qrCodeBase64 = string.Empty;
+                try
+                {
+                    qrCodeBase64 = await _qrCodeService.GenerateTicketQRCodeBase64Async(ticket.QRCodeData);
+                    _logger.LogInformation("✅ QR code generated for ticket {TicketId}, length: {Length}", ticketId, qrCodeBase64.Length);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Error generating QR code for ticket {TicketId}", ticketId);
+                }
+
+                var ticketModel = new TicketDeliveryModel
+                {
+                    UserName = ticket.AttendeeName,
+                    Email = ticket.AttendeeEmail,
+                    SiteName = _frontendSettings.AppName,
+                    SiteUrl = _frontendSettings.BaseUrl,
+                    EventTitle = ticket.Registration.Event.EventName,
+                    EventDescription = "", // Event entity doesn't have Description field
+                    EventStartDate = ticket.Registration.Event.StartDate,
+                    EventEndDate = ticket.Registration.Event.EndDate,
+                    VenueName = ticket.Registration.Event.Venue?.VenueName ?? "TBD",
+                    VenueAddress = ticket.Registration.Event.Venue?.Address ?? "TBD",
+                    TicketNumber = ticket.UniqueReferenceCode,
+                    TicketTypeName = ticket.TicketType?.TypeName ?? "General Admission",
+                    TicketPrice = ticket.TicketType?.Price ?? 0,
+                    AttendeeName = ticket.AttendeeName,
+                    QRCodeBase64 = qrCodeBase64,
+                    EventUrl = $"{_frontendSettings.BaseUrl}/events/{ticket.Registration.Event.UrlSlug}",
+                    CheckInInstructions = "Please arrive at least 15 minutes before the event starts. Present your QR code at the entrance for quick check-in.",
+                    SentAt = DateTime.UtcNow
+                };
+
+                var result = await _emailService.SendTemplateEmailAsync(
+                    ticket.AttendeeEmail,
+                    $"🎫 Your Ticket for {ticket.Registration.Event.EventName}",
+                    "TicketDelivery",
+                    ticketModel
+                );
+
+                if (result.Success)
+                {
+                    _logger.LogInformation("📧 Ticket email sent successfully for ticket {TicketId} to {Email}",
+                        ticketId, ticket.AttendeeEmail);
+                }
+                else
+                {
+                    _logger.LogError("❌ Failed to send ticket email for ticket {TicketId}: {Message}",
+                        ticketId, result.Message);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error sending ticket email for ticket {TicketId}", ticketId);
+                return ApiResponse<bool>.ErrorResult("An error occurred while sending ticket email", new List<string> { ex.Message });
             }
         }
 

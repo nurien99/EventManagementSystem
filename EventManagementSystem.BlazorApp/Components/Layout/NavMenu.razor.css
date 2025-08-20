@@ -1,0 +1,224 @@
+/* ========== LAGOON NAVIGATION - STANDARDIZED DESIGN SYSTEM ========== */
+
+/* Navigation-specific design tokens using standardized colors */
+:root {
+    /* Navigation Colors - Using Standardized Variables */
+    --nav-bg: var(--primary-500);               /* Main teal background */
+    --nav-bg-darker: var(--primary-600);        /* Darker sections (header/footer) */
+    --nav-border: rgba(255, 255, 255, 0.15);    /* Subtle borders */
+    --nav-text: rgba(255, 255, 255, 0.9);       /* Primary text */
+    --nav-text-muted: rgba(255, 255, 255, 0.7); /* Secondary text */
+    --nav-hover-bg: rgba(255, 255, 255, 0.1);   /* Hover overlay */
+    --nav-hover-text: var(--white);             /* Hover text */
+    --nav-active-bg: var(--white);              /* Active background */
+    --nav-active-text: var(--primary-500);      /* Active text */
+    
+    /* Navigation Spacing - Using Standardized Scale */
+    --nav-padding: var(--space-4);              /* 16px */
+    --nav-gap: var(--space-3);                  /* 12px */
+    --nav-radius: var(--radius);                /* 8px */
+    --nav-item-height: 44px;                    /* Consistent touch target */
+}
+
+/* Overall Sidebar Structure - Set to the teal background */
+nav.sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    background: var(--nav-bg) !important;
+    border-right: 1px solid var(--nav-border) !important;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Sidebar Header - Using Standardized System */
+nav.sidebar .sidebar-header {
+    padding: var(--space-6) var(--space-5) !important; /* 24px 20px */
+    border-bottom: 1px solid var(--nav-border) !important;
+    background: var(--nav-bg-darker) !important; /* Darker teal for contrast */
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--white); /* White text for the brand */
+}
+
+.brand-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1); /* Transparent white icon background */
+    border-radius: var(--nav-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    color: white;
+}
+
+.brand-text .brand-name,
+.brand-text .brand-subtitle {
+    color: var(--white); /* Ensure brand text is white */
+}
+
+.brand-text .brand-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    display: block;
+    line-height: 1.2;
+}
+
+.brand-text .brand-subtitle {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    display: block;
+    font-weight: 400;
+}
+
+/* Navigation Menu */
+nav.sidebar .sidebar-nav {
+    flex-grow: 1 !important;
+    padding: 20px 16px !important;
+    overflow-y: auto !important;
+    background: var(--nav-bg) !important; /* Ensures the middle section is also teal */
+}
+
+.nav-section-title {
+    padding: 8px 12px 12px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--nav-text-muted); /* Muted white text */
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* --- CORE NAVIGATION ITEMS --- */
+
+/* Base Nav Link Style - Using Standardized System */
+.sidebar .nav-item ::deep .nav-link,
+.sidebar .nav-item .nav-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: var(--space-3) var(--nav-padding) !important; /* 12px 16px */
+    border-radius: var(--nav-radius) !important;
+    color: var(--nav-text) !important;
+    font-weight: 500 !important;
+    font-size: var(--text-sm) !important; /* 0.875rem */
+    transition: all 0.3s ease !important; /* Consistent transition */
+    text-decoration: none !important;
+    min-height: var(--nav-item-height) !important; /* 44px */
+    background: transparent !important;
+    border: none !important;
+    border-left: 3px solid transparent !important;
+}
+
+/* Hover State */
+.sidebar .nav-item ::deep .nav-link:hover,
+.sidebar .nav-item .nav-link:hover {
+    background: var(--nav-hover-bg) !important;
+    color: var(--nav-hover-text) !important;
+    transform: translateX(3px) !important;
+}
+
+/* Active State - Using Standardized Colors */
+.sidebar .nav-item ::deep .nav-link.active,
+.sidebar .nav-item .nav-link.active {
+    background: var(--nav-active-bg) !important; /* White background */
+    color: var(--nav-active-text) !important; /* Teal text */
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(2, 149, 169, 0.2) !important; /* Subtle shadow */
+    border-left-color: var(--primary-500) !important; /* Primary color indicator */
+}
+
+/* Secondary Link Styling */
+.sidebar .nav-item ::deep .nav-link.secondary,
+.sidebar .nav-item .nav-link.secondary {
+    color: var(--nav-text-muted) !important; /* Muted white text */
+    font-size: 0.85rem !important;
+}
+
+/* --- SPECIAL ACTION BUTTONS --- */
+
+/* Create Action Styling (Gold Button) */
+.sidebar .nav-item ::deep .nav-link.create-action,
+.sidebar .nav-item .nav-link.create-action {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
+    color: var(--gray-800) !important;
+    font-weight: 600 !important;
+    border-left-color: transparent !important;
+}
+
+.sidebar .nav-item ::deep .nav-link.create-action:hover,
+.sidebar .nav-item .nav-link.create-action:hover {
+    background: linear-gradient(135deg, var(--accent-dark) 0%, #d4a72c 100%) !important;
+    transform: translateX(2px) translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(253, 208, 55, 0.4) !important;
+    color: var(--gray-900) !important;
+}
+
+/* --- ICONS AND BADGES --- */
+
+.nav-icon {
+    width: 20px;
+    margin-right: 12px;
+    font-size: 1.1rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.nav-text {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.nav-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+.sidebar .nav-item .nav-link.active .nav-badge {
+    background: var(--nav-active-text) !important;
+    color: var(--nav-active-bg) !important;
+}
+
+/* --- SIDEBAR FOOTER --- */
+
+.sidebar-footer {
+    padding: 20px 16px;
+    margin-top: auto;
+    border-top: 1px solid var(--nav-border);
+    background: var(--primary-dark);
+}
+
+.sidebar-footer .nav-item {
+    margin-bottom: 0;
+}
+
+.sidebar .sidebar-footer ::deep .nav-link,
+.sidebar .sidebar-footer .nav-link {
+    color: var(--nav-text-muted) !important;
+    font-size: 0.85rem !important;
+    border-left-color: transparent !important;
+}
+
+.sidebar .sidebar-footer ::deep .nav-link:hover,
+.sidebar .sidebar-footer .nav-link:hover {
+    color: var(--white) !important;
+    background: transparent !important;
+    transform: none !important;
+}
+
+.sidebar-version {
+    text-align: center;
+    padding-top: 12px;
+    color: var(--nav-text-muted);
+    font-size: 0.75rem;
+}

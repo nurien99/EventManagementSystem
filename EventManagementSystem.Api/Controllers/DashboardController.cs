@@ -1,5 +1,4 @@
-﻿// File: EventManagementSystem.Api/Controllers/DashboardController.cs
-using EventManagementSystem.Api.Services.Interfaces;
+﻿using EventManagementSystem.Api.Services.Interfaces;
 using EventManagementSystem.Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,14 +24,25 @@ namespace EventManagementSystem.Api.Controllers
         [HttpGet("stats")]
         public async Task<ActionResult<ApiResponse<DashboardStatsDto>>> GetDashboardStats()
         {
-            var currentUserId = GetCurrentUserId();
-            var userRole = GetCurrentUserRole();
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var userRole = GetCurrentUserRole();
 
-            // Admins see all data, others see only their data
-            var userId = userRole == "Admin" ? (int?)null : currentUserId;
+                // Admins see all data, others see only their data
+                var userId = userRole == "Admin" ? (int?)null : currentUserId;
 
-            var result = await _dashboardService.GetDashboardStatsAsync(userId);
-            return Ok(result);
+                var result = await _dashboardService.GetDashboardStatsAsync(userId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ApiResponse<DashboardStatsDto>.ErrorResult(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<DashboardStatsDto>.ErrorResult("Error retrieving dashboard statistics", new List<string> { ex.Message }));
+            }
         }
 
         /// <summary>
@@ -96,7 +106,18 @@ namespace EventManagementSystem.Api.Controllers
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst("userId") ?? User.FindFirst(ClaimTypes.NameIdentifier);
-            return int.Parse(userIdClaim?.Value ?? "0");
+            
+            if (userIdClaim?.Value == null)
+            {
+                throw new UnauthorizedAccessException("User ID claim not found in token");
+            }
+            
+            if (!int.TryParse(userIdClaim.Value, out int userId) || userId <= 0)
+            {
+                throw new UnauthorizedAccessException("Invalid user ID in token");
+            }
+            
+            return userId;
         }
 
         private string GetCurrentUserRole()

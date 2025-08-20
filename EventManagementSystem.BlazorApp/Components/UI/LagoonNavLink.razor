@@ -1,0 +1,16 @@
+﻿@* LagoonNavLink.razor *@
+<NavLink href="@Href"
+         class="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-lagoon-100 text-lagoon-900 font-medium transition duration-200"
+         activeClass="bg-lagoon-200 font-semibold">
+    @if (!string.IsNullOrWhiteSpace(Icon))
+    {
+        <i class="lucide lucide-@Icon w-5 h-5"></i>
+    }
+    <span>@Text</span>
+</NavLink>
+
+@code {
+    [Parameter] public string Href { get; set; } = "/";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+}

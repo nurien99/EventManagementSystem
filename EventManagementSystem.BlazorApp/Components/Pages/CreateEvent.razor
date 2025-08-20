@@ -1,0 +1,1668 @@
+
+@page "/create-event"
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.BlazorApp.Services
+@inject EventService EventService
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Create Event - Event Management System</PageTitle>
+
+<!-- Create Event Wizard -->
+<div class="create-event-page">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div>
+                            <h1 class="page-title">
+                                <i class="bi bi-plus-circle me-3"></i>Create New Event
+                            </h1>
+                            <p class="page-subtitle">Follow the steps below to create your amazing event</p>
+                        </div>
+                        <div>
+                            <a href="/dashboard" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Progress Steps -->
+                    <div class="progress-steps">
+                        <div class="step @(currentStep == 1 ? "active" : currentStep > 1 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 1 ? "bi-check" : "bi-1-circle")"></i>
+                            </div>
+                            <div class="step-label">Basic Info</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 1 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 2 ? "active" : currentStep > 2 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 2 ? "bi-check" : "bi-2-circle")"></i>
+                            </div>
+                            <div class="step-label">Venue</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 2 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 3 ? "active" : currentStep > 3 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 3 ? "bi-check" : "bi-3-circle")"></i>
+                            </div>
+                            <div class="step-label">Tickets</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 3 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 4 ? "active" : currentStep > 4 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 4 ? "bi-check" : "bi-4-circle")"></i>
+                            </div>
+                            <div class="step-label">Preview</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Container -->
+                <div class="form-container">
+                    <EditForm Model="eventDto" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
+                        <DataAnnotationsValidator />
+
+                        <!-- Step Content -->
+                        <div class="step-content">
+                            @if (currentStep == 1)
+                            {
+                                <div class="step-panel">
+                                    <div class="step-header">
+                                        <h3><i class="bi bi-info-circle me-2"></i>Basic Information</h3>
+                                        <p>Tell us about your event - the name, description, and when it's happening</p>
+                                    </div>
+
+                                    <div class="row g-4">
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <label for="eventName" class="form-label required">Event Name</label>
+                                                <InputText id="eventName" class="@GetFormControlClass("EventName")" 
+                                                          @bind-Value="eventDto.EventName" placeholder="Enter your event name" />
+                                                <ValidationMessage For="() => eventDto.EventName" class="invalid-feedback" />
+                                                <small class="form-text text-muted">Choose a compelling name that captures the essence of your event</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <div class="form-group">
+                                                <label for="eventDesc" class="form-label">Event Description</label>
+                                                <InputTextArea id="eventDesc" class="form-control" rows="4" 
+                                                              @bind-Value="eventDto.EventDesc" placeholder="Describe your event in detail..." />
+                                                <ValidationMessage For="() => eventDto.EventDesc" class="invalid-feedback" />
+                                                <small class="form-text text-muted">Provide a detailed description to help attendees understand what to expect</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="category" class="form-label">Category</label>
+                                                <InputSelect id="category" class="form-select" @bind-Value="eventDto.CategoryID">
+                                                    <option value="">Select a category</option>
+                                                    @foreach (var category in categories)
+                                                    {
+                                                        <option value="@category.CategoryID">@category.CategoryName</option>
+                                                    }
+                                                </InputSelect>
+                                                <ValidationMessage For="() => eventDto.CategoryID" class="invalid-feedback" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="maxCapacity" class="form-label">Maximum Capacity</label>
+                                                <InputNumber id="maxCapacity" class="form-control" @bind-Value="eventDto.MaxCapacity" 
+                                                           placeholder="e.g. 100" min="1" />
+                                                <ValidationMessage For="() => eventDto.MaxCapacity" class="invalid-feedback" />
+                                                <small class="form-text text-muted">Leave blank for unlimited capacity</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="startDate" class="form-label required">Start Date & Time</label>
+                                                <input type="datetime-local" id="startDate" class="@GetFormControlClass("StartDate")" 
+                                                       value="@(eventDto.StartDate.ToString("yyyy-MM-ddTHH:mm"))" 
+                                                       @onchange="@((ChangeEventArgs e) => eventDto.StartDate = ParseDateTime(e.Value?.ToString()) ?? DateTime.Now)" />
+                                                <ValidationMessage For="() => eventDto.StartDate" class="invalid-feedback" />
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="endDate" class="form-label">End Date & Time</label>
+                                                <input type="datetime-local" id="endDate" class="form-control" 
+                                                       value="@(eventDto.EndDate?.ToString("yyyy-MM-ddTHH:mm"))" 
+                                                       @onchange="@((ChangeEventArgs e) => eventDto.EndDate = ParseDateTime(e.Value?.ToString()))" />
+                                                <ValidationMessage For="() => eventDto.EndDate" class="invalid-feedback" />
+                                                <small class="form-text text-muted">Leave blank for single-day events</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="registrationDeadline" class="form-label">Registration Deadline</label>
+                                                <input type="datetime-local" id="registrationDeadline" class="form-control" 
+                                                       value="@(eventDto.RegistrationDeadline?.ToString("yyyy-MM-ddTHH:mm"))" 
+                                                       @onchange="@((ChangeEventArgs e) => eventDto.RegistrationDeadline = ParseDateTime(e.Value?.ToString()))" />
+                                                <ValidationMessage For="() => eventDto.RegistrationDeadline" class="invalid-feedback" />
+                                                <small class="form-text text-muted">When should registration close?</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else if (currentStep == 2)
+                            {
+                                <!-- Venue Selection Step -->
+                                <div class="step-panel">
+                                    <div class="step-header">
+                                        <h3><i class="bi bi-geo-alt me-2"></i>Venue Selection</h3>
+                                        <p>Choose where your event will take place</p>
+                                    </div>
+
+                                    <!-- Venue Type Selection -->
+                                    <div class="venue-selection-type mb-4">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <div class="venue-option @(venueSelectionType == "existing" ? "selected" : "")" 
+                                                     @onclick="@(() => SelectVenueType("existing"))">
+                                                    <div class="option-icon">
+                                                        <i class="bi bi-building"></i>
+                                                    </div>
+                                                    <h5>Select Existing Venue</h5>
+                                                    <p>Choose from our list of registered venues</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="venue-option @(venueSelectionType == "new" ? "selected" : "")" 
+                                                     @onclick="@(() => SelectVenueType("new"))">
+                                                    <div class="option-icon">
+                                                        <i class="bi bi-plus-circle"></i>
+                                                    </div>
+                                                    <h5>Add New Venue</h5>
+                                                    <p>Create a new venue with custom details</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (venueSelectionType == "existing")
+                                    {
+                                        <!-- Existing Venue Selection -->
+                                        <div class="existing-venue-section">
+                                            <div class="row g-4">
+                                                <div class="col-12">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Search & Select Venue</label>
+                                                        <div class="venue-search-container">
+                                                            <div class="input-group">
+                                                                <span class="input-group-text">
+                                                                    <i class="bi bi-search"></i>
+                                                                </span>
+                                                                <input type="text" class="form-control" 
+                                                                       placeholder="Search venues..." 
+                                                                       @bind="venueSearchTerm" 
+                                                                       @oninput="FilterVenues" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12">
+                                                    <div class="venues-grid">
+                                                        @if (filteredVenues.Any())
+                                                        {
+                                                            @foreach (var venue in filteredVenues)
+                                                            {
+                                                                <div class="venue-card @(eventDto.VenueID == venue.VenueID ? "selected" : "")" 
+                                                                     @onclick="() => SelectExistingVenue(venue)">
+                                                                    <div class="venue-card-header">
+                                                                        <h6>@venue.VenueName</h6>
+                                                                        @if (eventDto.VenueID == venue.VenueID)
+                                                                        {
+                                                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                                                        }
+                                                                    </div>
+                                                                    <div class="venue-details">
+                                                                        <div class="detail-row">
+                                                                            <i class="bi bi-geo-alt text-muted"></i>
+                                                                            <span>@venue.FullAddress</span>
+                                                                        </div>
+                                                                        @if (venue.Capacity.HasValue)
+                                                                        {
+                                                                            <div class="detail-row">
+                                                                                <i class="bi bi-people text-muted"></i>
+                                                                                <span>Capacity: @venue.Capacity</span>
+                                                                            </div>
+                                                                        }
+                                                                        @if (venue.EventCount > 0)
+                                                                        {
+                                                                            <div class="detail-row">
+                                                                                <i class="bi bi-calendar-event text-muted"></i>
+                                                                                <span>@venue.EventCount previous events</span>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else if (!string.IsNullOrEmpty(venueSearchTerm))
+                                                        {
+                                                            <div class="text-center py-4 text-muted">
+                                                                <i class="bi bi-search" style="font-size: 2rem;"></i>
+                                                                <p>No venues found matching "@venueSearchTerm"</p>
+                                                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                                        @onclick="@(() => SelectVenueType("new"))">
+                                                                    <i class="bi bi-plus me-1"></i>Create New Venue Instead
+                                                                </button>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="text-center py-4 text-muted">
+                                                                <i class="bi bi-building" style="font-size: 2rem;"></i>
+                                                                <p>@venues.Count venues available</p>
+                                                                <small>Start typing to search venues</small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (venueSelectionType == "new")
+                                    {
+                                        <!-- New Venue Creation -->
+                                        <div class="new-venue-section">
+                                            <div class="row g-4">
+                                                <div class="col-12">
+                                                    <div class="alert alert-info">
+                                                        <i class="bi bi-info-circle me-2"></i>
+                                                        <strong>Creating a new venue:</strong> This venue will be saved and available for future events.
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-8">
+                                                    <div class="form-group">
+                                                        <label for="newVenueName" class="form-label required">Venue Name</label>
+                                                        <InputText id="newVenueName" class="form-control" 
+                                                                  @bind-Value="eventDto.NewVenueName" 
+                                                                  placeholder="e.g. Conference Center Downtown" />
+                                                        <ValidationMessage For="() => eventDto.NewVenueName" class="invalid-feedback" />
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-4">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Venue Capacity</label>
+                                                        <input type="number" class="form-control" 
+                                                               @bind="newVenueCapacity" 
+                                                               placeholder="e.g. 500" min="1" />
+                                                        <small class="form-text text-muted">Optional</small>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12">
+                                                    <div class="form-group">
+                                                        <label for="newVenueAddress" class="form-label required">Street Address</label>
+                                                        <InputText id="newVenueAddress" class="form-control" 
+                                                                  @bind-Value="eventDto.NewVenueAddress" 
+                                                                  placeholder="e.g. 123 Main Street, Suite 100" />
+                                                        <ValidationMessage For="() => eventDto.NewVenueAddress" class="invalid-feedback" />
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="newVenueCity" class="form-label required">City</label>
+                                                        <InputText id="newVenueCity" class="form-control" 
+                                                                  @bind-Value="eventDto.NewVenueCity" 
+                                                                  placeholder="e.g. San Francisco" />
+                                                        <ValidationMessage For="() => eventDto.NewVenueCity" class="invalid-feedback" />
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label for="newVenueState" class="form-label required">State/Province</label>
+                                                        <InputText id="newVenueState" class="form-control" 
+                                                                  @bind-Value="eventDto.NewVenueState" 
+                                                                  placeholder="e.g. CA" />
+                                                        <ValidationMessage For="() => eventDto.NewVenueState" class="invalid-feedback" />
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label for="newVenuePostalCode" class="form-label required">Postal Code</label>
+                                                        <InputText id="newVenuePostalCode" class="form-control" 
+                                                                  @bind-Value="eventDto.NewVenuePostalCode" 
+                                                                  placeholder="e.g. 94102" />
+                                                        <ValidationMessage For="() => eventDto.NewVenuePostalCode" class="invalid-feedback" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- New Venue Preview -->
+                                            @if (!string.IsNullOrEmpty(eventDto.NewVenueName) && !string.IsNullOrEmpty(eventDto.NewVenueAddress))
+                                            {
+                                                <div class="venue-preview mt-4">
+                                                    <h6><i class="bi bi-eye me-2"></i>Venue Preview</h6>
+                                                    <div class="venue-card selected">
+                                                        <div class="venue-card-header">
+                                                            <h6>@eventDto.NewVenueName</h6>
+                                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                                        </div>
+                                                        <div class="venue-details">
+                                                            <div class="detail-row">
+                                                                <i class="bi bi-geo-alt text-muted"></i>
+                                                                <span>
+                                                                    @eventDto.NewVenueAddress
+                                                                    @if (!string.IsNullOrEmpty(eventDto.NewVenueCity))
+                                                                    {
+                                                                        <text>, @eventDto.NewVenueCity</text>
+                                                                    }
+                                                                    @if (!string.IsNullOrEmpty(eventDto.NewVenueState))
+                                                                    {
+                                                                        <text>, @eventDto.NewVenueState</text>
+                                                                    }
+                                                                    @if (!string.IsNullOrEmpty(eventDto.NewVenuePostalCode))
+                                                                    {
+                                                                        <text> @eventDto.NewVenuePostalCode</text>
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            @if (newVenueCapacity.HasValue)
+                                                            {
+                                                                <div class="detail-row">
+                                                                    <i class="bi bi-people text-muted"></i>
+                                                                    <span>Capacity: @newVenueCapacity</span>
+                                                                </div>
+                                                            }
+                                                            <div class="detail-row">
+                                                                <i class="bi bi-star text-warning"></i>
+                                                                <span><em>New venue</em></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- No selection made -->
+                                        <div class="text-center py-5 text-muted">
+                                            <i class="bi bi-geo-alt" style="font-size: 3rem;"></i>
+                                            <p>Please select how you'd like to choose your venue</p>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (currentStep == 3)
+                            {
+                                <!-- Tickets & Pricing Step -->
+                                <div class="step-panel">
+                                    <div class="step-header">
+                                        <h3><i class="bi bi-ticket-perforated me-2"></i>Tickets & Pricing</h3>
+                                        <p>Set up your ticket types and pricing to manage event registration</p>
+                                    </div>
+
+                                    <!-- Ticket Strategy Selection -->
+                                    <div class="ticket-strategy-selection mb-4">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <div class="strategy-option @(ticketStrategy == "free" ? "selected" : "")" 
+                                                     @onclick="@(() => SetTicketStrategy("free"))">
+                                                    <div class="option-icon">
+                                                        <i class="bi bi-gift"></i>
+                                                    </div>
+                                                    <h6>Free Event</h6>
+                                                    <p>No tickets needed, open to all</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="strategy-option @(ticketStrategy == "simple" ? "selected" : "")" 
+                                                     @onclick="@(() => SetTicketStrategy("simple"))">
+                                                    <div class="option-icon">
+                                                        <i class="bi bi-ticket-perforated"></i>
+                                                    </div>
+                                                    <h6>Simple Ticketing</h6>
+                                                    <p>One ticket type for everyone</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="strategy-option @(ticketStrategy == "advanced" ? "selected" : "")" 
+                                                     @onclick="@(() => SetTicketStrategy("advanced"))">
+                                                    <div class="option-icon">
+                                                        <i class="bi bi-layers"></i>
+                                                    </div>
+                                                    <h6>Multiple Tickets</h6>
+                                                    <p>Different types and pricing tiers</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (ticketStrategy == "free")
+                                    {
+                                        <!-- Free Event Configuration -->
+                                        <div class="free-event-config">
+                                            <div class="alert alert-success d-flex align-items-center">
+                                                <i class="bi bi-check-circle-fill me-3 fs-4"></i>
+                                                <div>
+                                                    <h6 class="mb-1">Free Event Configuration</h6>
+                                                    <p class="mb-0">Your event will be free to attend. Attendees can register without payment, but you can still track registrations and manage capacity.</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row g-4 mt-2">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Registration Required?</label>
+                                                        <div class="form-check-container">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="registrationRequired"
+                                                                       id="regRequired" @onchange="@((ChangeEventArgs e) => requiresRegistration = true)"
+                                                                       checked="@requiresRegistration">
+                                                                <label class="form-check-label" for="regRequired">
+                                                                    Yes, require registration
+                                                                </label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="registrationRequired"
+                                                                       id="regNotRequired" @onchange="@((ChangeEventArgs e) => requiresRegistration = false)"
+                                                                       checked="@(!requiresRegistration)">
+                                                                <label class="form-check-label" for="regNotRequired">
+                                                                    No registration needed
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <small class="form-text text-muted">
+                                                            @if (requiresRegistration)
+                                                            {
+                                                                <text>People will need to register (for free) to attend your event.</text>
+                                                            }
+                                                            else
+                                                            {
+                                                                <text>Anyone can attend without registering - perfect for public events.</text>
+                                                            }
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (ticketStrategy == "simple")
+                                    {
+                                        <!-- Simple Ticketing Configuration -->
+                                        <div class="simple-ticket-config">
+                                            <div class="alert alert-info d-flex align-items-center mb-4">
+                                                <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                                                <div>
+                                                    <h6 class="mb-1">Simple Ticketing</h6>
+                                                    <p class="mb-0">Create one ticket type that works for all attendees. Perfect for most events.</p>
+                                                </div>
+                                            </div>
+
+                                            @{
+                                                // Ensure we have a ticket for simple ticketing
+                                                if (eventDto.TicketTypes.Count == 0)
+                                                {
+                                                    eventDto.TicketTypes.Add(new CreateTicketTypeDto { TypeName = "General Admission", DisplayOrder = 1, Quantity = 100, Price = 0 });
+                                                }
+                                            }
+
+                                            <div class="ticket-form-card">
+                                                <div class="ticket-form-header">
+                                                    <h6><i class="bi bi-ticket me-2"></i>Event Ticket</h6>
+                                                </div>
+                                                
+                                                <div class="row g-4">
+                                                    <div class="col-md-8">
+                                                        <div class="form-group">
+                                                            <label class="form-label required">Ticket Name</label>
+                                                            <InputText class="form-control" @bind-Value="eventDto.TicketTypes[0].TypeName" 
+                                                                      placeholder="e.g. General Admission, Conference Pass" />
+                                                            @if (eventDto.TicketTypes.Count > 0)
+                                                            {
+                                                                <ValidationMessage For="() => eventDto.TicketTypes[0].TypeName" class="invalid-feedback" />
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-group">
+                                                            <label class="form-label required">Price</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text">$</span>
+                                                                <InputNumber class="form-control" @bind-Value="eventDto.TicketTypes[0].Price" 
+                                                                           placeholder="0.00" min="0" step="0.01" />
+                                                            </div>
+                                                            @if (eventDto.TicketTypes.Count > 0)
+                                                            {
+                                                                <ValidationMessage For="() => eventDto.TicketTypes[0].Price" class="invalid-feedback" />
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12">
+                                                        <div class="form-group">
+                                                            <label class="form-label">Ticket Description</label>
+                                                            <InputTextArea class="form-control" rows="3" @bind-Value="eventDto.TicketTypes[0].Description" 
+                                                                          placeholder="Describe what's included with this ticket..." />
+                                                            @if (eventDto.TicketTypes.Count > 0)
+                                                            {
+                                                                <ValidationMessage For="() => eventDto.TicketTypes[0].Description" class="invalid-feedback" />
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label required">Available Quantity</label>
+                                                            <InputNumber class="form-control" @bind-Value="eventDto.TicketTypes[0].Quantity" 
+                                                                       placeholder="100" min="1" />
+                                                            @if (eventDto.TicketTypes.Count > 0)
+                                                            {
+                                                                <ValidationMessage For="() => eventDto.TicketTypes[0].Quantity" class="invalid-feedback" />
+                                                            }
+                                                            <small class="form-text text-muted">How many tickets are available for sale?</small>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">Sale End Date</label>
+                                                            <input type="datetime-local" class="form-control" 
+                                                                   value="@(eventDto.TicketTypes.Count > 0 ? eventDto.TicketTypes[0].SaleEndDate?.ToString("yyyy-MM-ddTHH:mm") : "")" 
+                                                                   @onchange="@((ChangeEventArgs e) => { if (eventDto.TicketTypes.Count > 0) eventDto.TicketTypes[0].SaleEndDate = ParseDateTime(e.Value?.ToString()); })" />
+                                                            @if (eventDto.TicketTypes.Count > 0)
+                                                            {
+                                                                <ValidationMessage For="() => eventDto.TicketTypes[0].SaleEndDate" class="invalid-feedback" />
+                                                            }
+                                                            <small class="form-text text-muted">When should ticket sales stop? (Optional)</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (ticketStrategy == "advanced")
+                                    {
+                                        <!-- Advanced Multi-Ticket Configuration -->
+                                        <div class="advanced-ticket-config">
+                                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                                <div>
+                                                    <h6 class="mb-1">Multiple Ticket Types</h6>
+                                                    <p class="text-muted mb-0">Create different ticket types with varying prices and benefits</p>
+                                                </div>
+                                                <button type="button" class="btn btn-primary btn-sm" @onclick="AddNewTicketType">
+                                                    <i class="bi bi-plus-circle me-1"></i>Add Ticket Type
+                                                </button>
+                                            </div>
+
+                                            <!-- Existing Ticket Types -->
+                                            @if (eventDto.TicketTypes.Any())
+                                            {
+                                                <div class="ticket-types-container">
+                                                    @for (int i = 0; i < eventDto.TicketTypes.Count; i++)
+                                                    {
+                                                        var index = i; // Capture for closure
+                                                        var ticket = eventDto.TicketTypes[index];
+                                                        
+                                                        <div class="ticket-form-card">
+                                                            <div class="ticket-form-header">
+                                                                <h6><i class="bi bi-ticket me-2"></i>Ticket Type @(index + 1)</h6>
+                                                                @if (eventDto.TicketTypes.Count > 1)
+                                                                {
+                                                                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                                            @onclick="() => RemoveTicketType(index)">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                }
+                                                            </div>
+                                                            
+                                                            <div class="row g-4">
+                                                                <div class="col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label required">Ticket Name</label>
+                                                                        <InputText class="form-control" @bind-Value="ticket.TypeName" 
+                                                                                  placeholder="e.g. Early Bird, VIP, Student" />
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label required">Price</label>
+                                                                        <div class="input-group">
+                                                                            <span class="input-group-text">$</span>
+                                                                            <InputNumber class="form-control" @bind-Value="ticket.Price" 
+                                                                                       placeholder="0.00" min="0" step="0.01" />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label required">Quantity</label>
+                                                                        <InputNumber class="form-control" @bind-Value="ticket.Quantity" 
+                                                                                   placeholder="50" min="1" />
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-12">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label">Ticket Description</label>
+                                                                        <InputTextArea class="form-control" rows="2" @bind-Value="ticket.Description" 
+                                                                                      placeholder="What's included with this ticket type?" />
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label">Sale Start Date</label>
+                                                                        <input type="datetime-local" class="form-control" 
+                                                                               value="@(ticket.SaleStartDate?.ToString("yyyy-MM-ddTHH:mm"))" 
+                                                                               @onchange="@((ChangeEventArgs e) => ticket.SaleStartDate = ParseDateTime(e.Value?.ToString()))" />
+                                                                        <small class="form-text text-muted">When can people start buying this ticket?</small>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label class="form-label">Sale End Date</label>
+                                                                        <input type="datetime-local" class="form-control" 
+                                                                               value="@(ticket.SaleEndDate?.ToString("yyyy-MM-ddTHH:mm"))" 
+                                                                               @onchange="@((ChangeEventArgs e) => ticket.SaleEndDate = ParseDateTime(e.Value?.ToString()))" />
+                                                                        <small class="form-text text-muted">When should sales for this ticket stop?</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+
+                                                <!-- Ticket Summary -->
+                                                <div class="ticket-summary mt-4">
+                                                    <h6><i class="bi bi-bar-chart me-2"></i>Ticket Summary</h6>
+                                                    <div class="summary-cards">
+                                                        <div class="summary-card">
+                                                            <div class="summary-label">Total Ticket Types</div>
+                                                            <div class="summary-value">@eventDto.TicketTypes.Count</div>
+                                                        </div>
+                                                        <div class="summary-card">
+                                                            <div class="summary-label">Total Capacity</div>
+                                                            <div class="summary-value">@eventDto.TicketTypes.Sum(t => t.Quantity)</div>
+                                                        </div>
+                                                        <div class="summary-card">
+                                                            <div class="summary-label">Price Range</div>
+                                                            <div class="summary-value">@GetPriceRangeText()</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <!-- No Tickets Yet -->
+                                                <div class="text-center py-5">
+                                                    <i class="bi bi-ticket-perforated" style="font-size: 3rem; color: var(--gray-400);"></i>
+                                                    <h6 class="mt-3 mb-2 text-muted">No ticket types created yet</h6>
+                                                    <p class="text-muted mb-4">Add your first ticket type to get started</p>
+                                                    <button type="button" class="btn btn-primary" @onclick="AddNewTicketType">
+                                                        <i class="bi bi-plus-circle me-2"></i>Add Your First Ticket Type
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- No strategy selected -->
+                                        <div class="text-center py-5 text-muted">
+                                            <i class="bi bi-ticket-perforated" style="font-size: 3rem;"></i>
+                                            <p>Choose your ticketing strategy to continue</p>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (currentStep == 4)
+                            {
+                                <!-- Settings & Preview Step -->
+                                <div class="step-panel">
+                                    <div class="step-header">
+                                        <h3><i class="bi bi-eye me-2"></i>Review & Submit</h3>
+                                        <p>Add final touches and review your event before publishing</p>
+                                    </div>
+
+                                    <div class="row g-4">
+                                        <!-- Left Column: Additional Settings -->
+                                        <div class="col-lg-6">
+                                            <!-- Event Image Upload -->
+                                            <div class="settings-card">
+                                                <div class="settings-header">
+                                                    <h6><i class="bi bi-image me-2"></i>Event Image</h6>
+                                                    <small class="text-muted">Optional</small>
+                                                </div>
+                                                
+                                                <div class="image-upload-section">
+                                                    @if (string.IsNullOrEmpty(eventDto.ImageUrl))
+                                                    {
+                                                        <div class="image-upload-placeholder">
+                                                            <div class="upload-icon">
+                                                                <i class="bi bi-cloud-upload"></i>
+                                                            </div>
+                                                            <h6>Add Event Cover Image</h6>
+                                                            <p class="text-muted mb-3">Upload an image to make your event more attractive</p>
+                                                            
+                                                            <!-- File Upload Input -->
+                                                            <div class="mb-3">
+                                                                <Microsoft.AspNetCore.Components.Forms.InputFile 
+                                                                    class="form-control" 
+                                                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                                                    OnChange="OnFileSelected" 
+                                                                    disabled="@isUploadingImage" />
+                                                                @if (isUploadingImage)
+                                                                {
+                                                                    <div class="d-flex align-items-center mt-2">
+                                                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                                                        <small class="text-muted">Uploading image...</small>
+                                                                    </div>
+                                                                }
+                                                                @if (!string.IsNullOrEmpty(uploadErrorMessage))
+                                                                {
+                                                                    <div class="alert alert-danger mt-2" role="alert">
+                                                                        <small>@uploadErrorMessage</small>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                            
+                                                            <!-- OR Separator -->
+                                                            <div class="upload-separator">
+                                                                <hr class="flex-grow-1">
+                                                                <span class="px-3 text-muted">OR</span>
+                                                                <hr class="flex-grow-1">
+                                                            </div>
+                                                            
+                                                            <!-- URL Input -->
+                                                            <div class="input-group">
+                                                                <input type="text" class="form-control" @bind="eventDto.ImageUrl" 
+                                                                       placeholder="Enter image URL..." />
+                                                                <button type="button" class="btn btn-outline-primary" @onclick="ShowImageUploadInfo">
+                                                                    <i class="bi bi-info-circle"></i>
+                                                                </button>
+                                                            </div>
+                                                            
+                                                            <small class="form-text text-muted mt-2">
+                                                                Supported formats: JPEG, PNG, GIF, WebP (max 5MB)<br>
+                                                                For best results, use images that are 1200x630 pixels (16:9 ratio)
+                                                            </small>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="image-preview">
+                                                            <img src="@eventDto.ImageUrl" alt="Event Cover" class="preview-image" />
+                                                            <div class="image-overlay">
+                                                                <button type="button" class="btn btn-outline-light btn-sm" 
+                                                                        @onclick="RemoveImage">
+                                                                    <i class="bi bi-trash"></i> Remove
+                                                                </button>
+                                                                <button type="button" class="btn btn-outline-light btn-sm" 
+                                                                        @onclick="ChangeImage">
+                                                                    <i class="bi bi-pencil"></i> Change
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-2">
+                                                            <input type="text" class="form-control form-control-sm" @bind="eventDto.ImageUrl" 
+                                                                   placeholder="Image URL" readonly />
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <!-- Additional Settings -->
+                                            <div class="settings-card">
+                                                <div class="settings-header">
+                                                    <h6><i class="bi bi-gear me-2"></i>Additional Settings</h6>
+                                                </div>
+                                                
+                                                <div class="settings-options">
+                                                    <div class="form-check-option">
+                                                        <input class="form-check-input" type="checkbox" id="publishImmediately" 
+                                                               @bind="publishImmediately" />
+                                                        <label class="form-check-label" for="publishImmediately">
+                                                            <strong>Publish Immediately</strong>
+                                                            <small class="d-block text-muted">Make this event visible to the public right away</small>
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="form-check-option">
+                                                        <input class="form-check-input" type="checkbox" id="allowWaitlist" 
+                                                               @bind="allowWaitlist" />
+                                                        <label class="form-check-label" for="allowWaitlist">
+                                                            <strong>Enable Waitlist</strong>
+                                                            <small class="d-block text-muted">Allow people to join a waitlist when tickets are sold out</small>
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="form-check-option">
+                                                        <input class="form-check-input" type="checkbox" id="sendConfirmationEmails" 
+                                                               @bind="sendConfirmationEmails" />
+                                                        <label class="form-check-label" for="sendConfirmationEmails">
+                                                            <strong>Send Confirmation Emails</strong>
+                                                            <small class="d-block text-muted">Automatically send registration confirmations to attendees</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if (showImageUploadInfo)
+                                            {
+                                                <div class="alert alert-info">
+                                                    <h6><i class="bi bi-lightbulb me-2"></i>Image Tips</h6>
+                                                    <ul class="mb-0">
+                                                        <li>Use high-quality images (1200x630px recommended)</li>
+                                                        <li>Avoid text overlays that might be hard to read</li>
+                                                        <li>Consider your event theme and audience</li>
+                                                        <li>You can use free images from Unsplash or Pexels</li>
+                                                    </ul>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" 
+                                                            @onclick="() => showImageUploadInfo = false">
+                                                        Got it!
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Right Column: Event Preview -->
+                                        <div class="col-lg-6">
+                                            <div class="event-preview-card">
+                                                <div class="preview-header">
+                                                    <h6><i class="bi bi-eye me-2"></i>Event Preview</h6>
+                                                    <small class="text-muted">How your event will appear to attendees</small>
+                                                </div>
+
+                                                <!-- Event Card Preview -->
+                                                <div class="event-card-preview">
+                                                    <!-- Event Image -->
+                                                    <div class="preview-image-container">
+                                                        @if (!string.IsNullOrEmpty(eventDto.ImageUrl))
+                                                        {
+                                                            <img src="@eventDto.ImageUrl" class="preview-card-image" alt="@eventDto.EventName" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="preview-placeholder-image">
+                                                                <i class="bi bi-calendar-event"></i>
+                                                            </div>
+                                                        }
+                                                        
+                                                        @if (publishImmediately)
+                                                        {
+                                                            <span class="preview-badge badge bg-success">Live</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="preview-badge badge bg-warning">Draft</span>
+                                                        }
+                                                    </div>
+
+                                                    <!-- Event Details -->
+                                                    <div class="preview-card-body">
+                                                        <h5 class="preview-title">@(eventDto.EventName ?? "Event Name")</h5>
+                                                        
+                                                        <p class="preview-description">
+                                                            @if (!string.IsNullOrEmpty(eventDto.EventDesc))
+                                                            {
+                                                                @(eventDto.EventDesc.Length > 120 ? eventDto.EventDesc.Substring(0, 120) + "..." : eventDto.EventDesc)
+                                                            }
+                                                            else
+                                                            {
+                                                                <em class="text-muted">Join us for this exciting event!</em>
+                                                            }
+                                                        </p>
+
+                                                        <!-- Event Meta -->
+                                                        <div class="preview-meta">
+                                                            <div class="meta-item">
+                                                                <i class="bi bi-calendar3"></i>
+                                                                <span>@eventDto.StartDate.ToString("MMM dd, yyyy")</span>
+                                                            </div>
+                                                            <div class="meta-item">
+                                                                <i class="bi bi-clock"></i>
+                                                                <span>@eventDto.StartDate.ToString("h:mm tt")</span>
+                                                            </div>
+                                                            <div class="meta-item">
+                                                                <i class="bi bi-geo-alt"></i>
+                                                                <span>
+                                                                    @if (eventDto.VenueID.HasValue && venues.Any(v => v.VenueID == eventDto.VenueID))
+                                                                    {
+                                                                        @venues.First(v => v.VenueID == eventDto.VenueID).VenueName
+                                                                    }
+                                                                    else if (!string.IsNullOrEmpty(eventDto.NewVenueName))
+                                                                    {
+                                                                        @eventDto.NewVenueName
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <em class="text-muted">Venue TBD</em>
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Pricing Info -->
+                                                        <div class="preview-pricing">
+                                                            @if (ticketStrategy == "free" || !eventDto.TicketTypes.Any())
+                                                            {
+                                                                <span class="price-badge free">FREE</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                @GetPreviewPricingBadge()
+                                                            }
+                                                        </div>
+
+                                                        <!-- Capacity Info -->
+                                                        @if (eventDto.TicketTypes.Any())
+                                                        {
+                                                            <div class="preview-capacity">
+                                                                <small class="text-muted">
+                                                                    <i class="bi bi-people me-1"></i>
+                                                                    @eventDto.TicketTypes.Sum(t => t.Quantity) spots available
+                                                                </small>
+                                                            </div>
+                                                        }
+                                                        else if (eventDto.MaxCapacity.HasValue)
+                                                        {
+                                                            <div class="preview-capacity">
+                                                                <small class="text-muted">
+                                                                    <i class="bi bi-people me-1"></i>
+                                                                    @eventDto.MaxCapacity max capacity
+                                                                </small>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Quick Summary -->
+                                            <div class="settings-card">
+                                                <div class="settings-header">
+                                                    <h6><i class="bi bi-list-check me-2"></i>Event Summary</h6>
+                                                </div>
+                                                
+                                                <div class="summary-grid">
+                                                    <div class="summary-item">
+                                                        <div class="summary-label">Category</div>
+                                                        <div class="summary-value">
+                                                            @if (eventDto.CategoryID.HasValue && categories.Any(c => c.CategoryID == eventDto.CategoryID))
+                                                            {
+                                                                @categories.First(c => c.CategoryID == eventDto.CategoryID).CategoryName
+                                                            }
+                                                            else
+                                                            {
+                                                                <em class="text-muted">Not specified</em>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="summary-item">
+                                                        <div class="summary-label">Ticketing</div>
+                                                        <div class="summary-value">
+                                                            @if (ticketStrategy == "free")
+                                                            {
+                                                                <text>Free Event</text>
+                                                            }
+                                                            else if (ticketStrategy == "simple")
+                                                            {
+                                                                <text>Single Ticket Type</text>
+                                                            }
+                                                            else if (ticketStrategy == "advanced")
+                                                            {
+                                                                <text>@eventDto.TicketTypes.Count Ticket Types</text>
+                                                            }
+                                                            else
+                                                            {
+                                                                <em class="text-muted">Not configured</em>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="summary-item">
+                                                        <div class="summary-label">Duration</div>
+                                                        <div class="summary-value">
+                                                            @if (eventDto.EndDate.HasValue)
+                                                            {
+                                                                var duration = eventDto.EndDate.Value - eventDto.StartDate;
+                                                                if (duration.Days > 0)
+                                                                {
+                                                                    <text>@duration.Days day(s)</text>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <text>@duration.Hours hour(s)</text>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <text>Single session</text>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="summary-item">
+                                                        <div class="summary-label">Registration</div>
+                                                        <div class="summary-value">
+                                                            @if (eventDto.RegistrationDeadline.HasValue)
+                                                            {
+                                                                <text>Until @eventDto.RegistrationDeadline.Value.ToString("MMM dd")</text>
+                                                            }
+                                                            else
+                                                            {
+                                                                <text>Until event starts</text>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="form-navigation">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    @if (currentStep > 1)
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary" @onclick="PreviousStep">
+                                            <i class="bi bi-arrow-left me-2"></i>Previous
+                                        </button>
+                                    }
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    @if (currentStep < 4)
+                                    {
+                                        <button type="button" class="btn btn-primary" @onclick="NextStep">
+                                            Next<i class="bi bi-arrow-right ms-2"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-success" disabled="@isSubmitting">
+                                            @if (isSubmitting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                <span>Creating Event...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-check-circle me-2"></i>
+                                                <span>Create Event</span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mt-3" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>@errorMessage
+                            </div>
+                        }
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateEventDto eventDto = new();
+    private List<CategoryDto> categories = new();
+    private List<VenueDto> venues = new();
+    private List<VenueDto> filteredVenues = new();
+    
+    private int currentStep = 1;
+    private bool isSubmitting = false;
+    private string errorMessage = "";
+    
+    private EditContext? editContext;
+    
+    // Venue selection state
+    private string venueSelectionType = ""; // "existing" or "new"
+    private string venueSearchTerm = "";
+    private int? newVenueCapacity;
+    
+    // Ticket management state
+    private string ticketStrategy = ""; // "free", "simple", "advanced"
+    private bool requiresRegistration = true;
+    
+    // Step 4: Preview and settings state
+    private bool publishImmediately = true;
+    private bool allowWaitlist = false;
+    private bool sendConfirmationEmails = true;
+    private bool showImageUploadInfo = false;
+    
+    // Image upload state
+    private bool isUploadingImage = false;
+    private string uploadErrorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is authenticated and authorized to create events
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/login?returnUrl=" + Uri.EscapeDataString("/create-event"));
+            return;
+        }
+
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user?.Role == EventManagementSystem.Core.UserRole.Attendee)
+        {
+            Navigation.NavigateTo("/dashboard?error=unauthorized");
+            return;
+        }
+
+        // Initialize the event with default values
+        eventDto.StartDate = DateTime.Today.AddDays(7).AddHours(18); // Default to next week at 6 PM
+        eventDto.TicketTypes = new List<CreateTicketTypeDto>();
+
+        // Load dropdown data
+        await LoadCategories();
+        await LoadVenues();
+
+        editContext = new EditContext(eventDto);
+    }
+
+    // Venue Selection Methods
+    private void SelectVenueType(string type)
+    {
+        venueSelectionType = type;
+        
+        // Clear previous selections
+        if (type == "existing")
+        {
+            ClearNewVenueData();
+            filteredVenues = venues.ToList();
+        }
+        else if (type == "new")
+        {
+            eventDto.VenueID = null;
+        }
+        
+        StateHasChanged();
+    }
+
+    private void SelectExistingVenue(VenueDto venue)
+    {
+        eventDto.VenueID = venue.VenueID;
+        ClearNewVenueData();
+        StateHasChanged();
+    }
+
+    private void ClearNewVenueData()
+    {
+        eventDto.NewVenueName = null;
+        eventDto.NewVenueAddress = null;
+        eventDto.NewVenueCity = null;
+        eventDto.NewVenueState = null;
+        eventDto.NewVenuePostalCode = null;
+        newVenueCapacity = null;
+    }
+
+    private void FilterVenues(ChangeEventArgs e)
+    {
+        venueSearchTerm = e.Value?.ToString() ?? "";
+        
+        if (string.IsNullOrEmpty(venueSearchTerm))
+        {
+            filteredVenues = venues.ToList();
+        }
+        else
+        {
+            filteredVenues = venues.Where(v => 
+                v.VenueName.Contains(venueSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                v.FullAddress.Contains(venueSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                v.City.Contains(venueSearchTerm, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+        
+        StateHasChanged();
+    }
+
+    // Ticket Management Methods
+    private void SetTicketStrategy(string strategy)
+    {
+        ticketStrategy = strategy;
+        
+        // Clear existing tickets when changing strategy
+        eventDto.TicketTypes.Clear();
+        
+        if (strategy == "free")
+        {
+            // No tickets needed for free events
+            requiresRegistration = true;
+        }
+        else if (strategy == "simple")
+        {
+            // Add a single default ticket
+            eventDto.TicketTypes.Add(new CreateTicketTypeDto 
+            { 
+                TypeName = "General Admission", 
+                DisplayOrder = 1,
+                Quantity = 100,
+                Price = 0
+            });
+        }
+        else if (strategy == "advanced")
+        {
+            // Start with empty list for advanced configuration
+        }
+        
+        StateHasChanged();
+    }
+
+    private void AddNewTicketType()
+    {
+        var newTicket = new CreateTicketTypeDto
+        {
+            TypeName = $"Ticket Type {eventDto.TicketTypes.Count + 1}",
+            DisplayOrder = eventDto.TicketTypes.Count + 1,
+            Quantity = 50,
+            Price = 0
+        };
+        
+        eventDto.TicketTypes.Add(newTicket);
+        StateHasChanged();
+    }
+
+    private void RemoveTicketType(int index)
+    {
+        if (index >= 0 && index < eventDto.TicketTypes.Count)
+        {
+            eventDto.TicketTypes.RemoveAt(index);
+            
+            // Update display orders
+            for (int i = 0; i < eventDto.TicketTypes.Count; i++)
+            {
+                eventDto.TicketTypes[i].DisplayOrder = i + 1;
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    // Preview and Settings Methods
+    private void ShowImageUploadInfo()
+    {
+        showImageUploadInfo = true;
+        StateHasChanged();
+    }
+
+    private async Task OnFileSelected(Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // Validate file size (5MB max)
+        const long maxFileSize = 5 * 1024 * 1024;
+        if (file.Size > maxFileSize)
+        {
+            uploadErrorMessage = "File size cannot exceed 5MB";
+            StateHasChanged();
+            return;
+        }
+
+        // Validate file type
+        var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        {
+            uploadErrorMessage = "Only image files (JPEG, PNG, GIF, WebP) are allowed";
+            StateHasChanged();
+            return;
+        }
+
+        isUploadingImage = true;
+        uploadErrorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            // Create form data
+            using var content = new MultipartFormDataContent();
+            using var fileStream = file.OpenReadStream(maxAllowedSize: maxFileSize);
+            using var streamContent = new StreamContent(fileStream);
+            
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "file", file.Name);
+
+            // Upload file via EventService
+            var response = await EventService.UploadEventImageAsync(content);
+            
+            if (response?.Success == true)
+            {
+                eventDto.ImageUrl = response.Data;
+                StateHasChanged();
+            }
+            else
+            {
+                uploadErrorMessage = response?.Message ?? "Failed to upload image";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadErrorMessage = $"Error uploading file: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingImage = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveImage()
+    {
+        if (!string.IsNullOrEmpty(eventDto.ImageUrl))
+        {
+            try
+            {
+                // Try to delete the uploaded file if it's from our server
+                if (eventDto.ImageUrl.Contains("/uploads/events/"))
+                {
+                    await EventService.DeleteEventImageAsync(eventDto.ImageUrl);
+                }
+            }
+            catch
+            {
+                // Ignore deletion errors
+            }
+            
+            eventDto.ImageUrl = null;
+            StateHasChanged();
+        }
+    }
+
+    private void ChangeImage()
+    {
+        // Clear the current image to show the upload interface again
+        eventDto.ImageUrl = null;
+        StateHasChanged();
+    }
+
+    private string GetPriceRangeText()
+    {
+        if (!eventDto.TicketTypes.Any()) return "No tickets";
+        
+        var hasFreePricingTickets = eventDto.TicketTypes.Any(t => t.Price == 0);
+        var paidTickets = eventDto.TicketTypes.Where(t => t.Price > 0).ToList();
+        
+        if (hasFreePricingTickets && paidTickets.Any())
+        {
+            var maxPrice = paidTickets.Max(t => t.Price);
+            return $"Free - ${maxPrice}";
+        }
+        else if (!paidTickets.Any()) // All free
+        {
+            return "FREE";
+        }
+        else // All paid
+        {
+            var minPrice = paidTickets.Min(t => t.Price);
+            var maxPrice = paidTickets.Max(t => t.Price);
+            return minPrice == maxPrice ? $"${minPrice}" : $"${minPrice} - ${maxPrice}";
+        }
+    }
+
+    private RenderFragment GetPreviewPricingBadge() => __builder =>
+    {
+        var hasFreePricingTickets = eventDto.TicketTypes.Any(t => t.Price == 0);
+        var paidTickets = eventDto.TicketTypes.Where(t => t.Price > 0).ToList();
+        
+        if (hasFreePricingTickets && paidTickets.Any())
+        {
+            var maxPrice = paidTickets.Max(t => t.Price);
+            <span class="price-badge">Free - $@maxPrice</span>
+        }
+        else if (!paidTickets.Any()) // All free
+        {
+            <span class="price-badge free">FREE</span>
+        }
+        else // All paid
+        {
+            var minPrice = paidTickets.Min(t => t.Price);
+            var maxPrice = paidTickets.Max(t => t.Price);
+            if (minPrice == maxPrice)
+            {
+                <span class="price-badge">$@minPrice</span>
+            }
+            else
+            {
+                <span class="price-badge">$@minPrice - $@maxPrice</span>
+            }
+        }
+    };
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            categories = await EventService.GetCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading categories: {ex.Message}");
+        }
+    }
+
+    private async Task LoadVenues()
+    {
+        try
+        {
+            venues = await EventService.GetVenuesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading venues: {ex.Message}");
+        }
+    }
+
+    private void NextStep()
+    {
+        if (ValidateCurrentStep())
+        {
+            currentStep++;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 1)
+        {
+            currentStep--;
+            StateHasChanged();
+        }
+    }
+
+    private bool ValidateCurrentStep()
+    {
+        errorMessage = "";
+        
+        if (currentStep == 1)
+        {
+            var errors = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(eventDto.EventName))
+                errors.Add("Event name is required");
+                
+            if (eventDto.StartDate <= DateTime.Now)
+                errors.Add("Start date must be in the future");
+                
+            if (eventDto.EndDate.HasValue && eventDto.EndDate <= eventDto.StartDate)
+                errors.Add("End date must be after start date");
+                
+            if (eventDto.RegistrationDeadline.HasValue && eventDto.RegistrationDeadline >= eventDto.StartDate)
+                errors.Add("Registration deadline must be before event start");
+                
+            if (errors.Any())
+            {
+                errorMessage = string.Join(", ", errors);
+                return false;
+            }
+        }
+        else if (currentStep == 2)
+        {
+            var errors = new List<string>();
+            
+            if (string.IsNullOrEmpty(venueSelectionType))
+            {
+                errors.Add("Please select how you want to choose a venue");
+            }
+            else if (venueSelectionType == "existing")
+            {
+                if (!eventDto.VenueID.HasValue)
+                    errors.Add("Please select a venue from the list");
+            }
+            else if (venueSelectionType == "new")
+            {
+                if (string.IsNullOrWhiteSpace(eventDto.NewVenueName))
+                    errors.Add("Venue name is required");
+                    
+                if (string.IsNullOrWhiteSpace(eventDto.NewVenueAddress))
+                    errors.Add("Venue address is required");
+                    
+                if (string.IsNullOrWhiteSpace(eventDto.NewVenueCity))
+                    errors.Add("Venue city is required");
+                    
+                if (string.IsNullOrWhiteSpace(eventDto.NewVenueState))
+                    errors.Add("Venue state is required");
+                    
+                if (string.IsNullOrWhiteSpace(eventDto.NewVenuePostalCode))
+                    errors.Add("Venue postal code is required");
+            }
+                
+            if (errors.Any())
+            {
+                errorMessage = string.Join(", ", errors);
+                return false;
+            }
+        }
+        else if (currentStep == 3)
+        {
+            var errors = new List<string>();
+            
+            if (string.IsNullOrEmpty(ticketStrategy))
+            {
+                errors.Add("Please select a ticketing strategy");
+            }
+            else if (ticketStrategy == "simple" || ticketStrategy == "advanced")
+            {
+                if (!eventDto.TicketTypes.Any())
+                {
+                    errors.Add("Please add at least one ticket type");
+                }
+                else
+                {
+                    for (int i = 0; i < eventDto.TicketTypes.Count; i++)
+                    {
+                        var ticket = eventDto.TicketTypes[i];
+                        
+                        if (string.IsNullOrWhiteSpace(ticket.TypeName))
+                            errors.Add($"Ticket type {i + 1}: Name is required");
+                            
+                        if (ticket.Price < 0)
+                            errors.Add($"Ticket type {i + 1}: Price cannot be negative");
+                            
+                        if (ticket.Quantity <= 0)
+                            errors.Add($"Ticket type {i + 1}: Quantity must be at least 1");
+                            
+                        if (ticket.SaleStartDate.HasValue && ticket.SaleEndDate.HasValue 
+                            && ticket.SaleStartDate >= ticket.SaleEndDate)
+                            errors.Add($"Ticket type {i + 1}: Sale start date must be before sale end date");
+                            
+                        if (ticket.SaleEndDate.HasValue && ticket.SaleEndDate >= eventDto.StartDate)
+                            errors.Add($"Ticket type {i + 1}: Sale end date must be before event start date");
+                    }
+                }
+            }
+                
+            if (errors.Any())
+            {
+                errorMessage = string.Join(", ", errors);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await SubmitEvent();
+    }
+
+    private async Task HandleInvalidSubmit()
+    {
+        errorMessage = "Please correct the validation errors before proceeding.";
+    }
+
+    private async Task SubmitEvent()
+    {
+        isSubmitting = true;
+        errorMessage = "";
+        
+        try
+        {
+            var result = await EventService.CreateEventAsync(eventDto);
+            
+            if (result != null)
+            {
+                // Success - redirect to event details or dashboard
+                Navigation.NavigateTo($"/dashboard?success=event-created&eventId={result.EventID}");
+            }
+            else
+            {
+                errorMessage = "Failed to create event. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating event: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string GetFormControlClass(string fieldName)
+    {
+        var hasError = editContext?.GetValidationMessages().Any(m => m.Contains(fieldName)) == true;
+        return $"form-control{(hasError ? " is-invalid" : "")}";
+    }
+
+    private DateTime? ParseDateTime(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return null;
+        
+        if (DateTime.TryParse(value, out var result))
+            return result;
+        
+        return null;
+    }
+}

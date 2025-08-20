@@ -16,18 +16,24 @@ namespace EventManagementSystem.Api.Controllers
         private readonly ApplicationDbContext _context; // ✅ ADD THIS
         private readonly IQRCodeService _qrCodeService;
         private readonly IEventAssistantService _eventAssistantService; // ✅ ADD THIS
+        private readonly INotificationService _notificationService;
+        private readonly IPdfService _pdfService;
 
         // ✅ UPDATE CONSTRUCTOR
         public TicketsController(
             ITicketService ticketService,
             ApplicationDbContext context,
             IQRCodeService qrCodeService,
-            IEventAssistantService eventAssistantService)
+            IEventAssistantService eventAssistantService,
+            INotificationService notificationService,
+            IPdfService pdfService)
         {
             _ticketService = ticketService;
             _context = context;
             _qrCodeService = qrCodeService;
             _eventAssistantService = eventAssistantService;
+            _notificationService = notificationService;
+            _pdfService = pdfService;
         }
 
         /// <summary>
@@ -126,6 +132,143 @@ namespace EventManagementSystem.Api.Controllers
         }
 
         /// <summary>
+        /// Get all tickets for the current user
+        /// </summary>
+        [HttpGet("my-tickets")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<List<UserTicketDto>>>> GetMyTickets()
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var result = await _ticketService.GetUserTicketsAsync(currentUserId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<List<UserTicketDto>>.ErrorResult($"Error retrieving tickets: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Get QR code image for a specific ticket
+        /// </summary>
+        [HttpGet("{ticketId}/qr-image")]
+        [Authorize]
+        public async Task<ActionResult> GetTicketQRImage(int ticketId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var ticket = await _context.IssuedTickets
+                    .Include(it => it.Registration)
+                    .FirstOrDefaultAsync(it => it.IssuedTicketID == ticketId && it.Registration.UserID == currentUserId);
+
+                if (ticket == null)
+                {
+                    return NotFound("Ticket not found");
+                }
+
+                var qrImageBytes = await _qrCodeService.GenerateQRCodeImageAsync(ticket.QRCodeData);
+                return File(qrImageBytes, "image/png");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error generating QR image: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get QR code as Base64 string for a specific ticket
+        /// </summary>
+        [HttpGet("{ticketId}/qr-base64")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<string>>> GetTicketQRBase64(int ticketId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var ticket = await _context.IssuedTickets
+                    .Include(it => it.Registration)
+                    .FirstOrDefaultAsync(it => it.IssuedTicketID == ticketId && it.Registration.UserID == currentUserId);
+
+                if (ticket == null)
+                {
+                    return NotFound(ApiResponse<string>.ErrorResult("Ticket not found"));
+                }
+
+                var qrBase64 = await _qrCodeService.GenerateTicketQRCodeBase64Async(ticket.QRCodeData);
+                return Ok(ApiResponse<string>.SuccessResult(qrBase64, "QR code generated"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<string>.ErrorResult($"Error generating QR code: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Send ticket via email to the attendee
+        /// </summary>
+        [HttpPost("{ticketId}/send-email")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> SendTicketEmail(int ticketId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var ticket = await _context.IssuedTickets
+                    .Include(it => it.Registration)
+                    .FirstOrDefaultAsync(it => it.IssuedTicketID == ticketId && it.Registration.UserID == currentUserId);
+
+                if (ticket == null)
+                {
+                    return NotFound(ApiResponse<bool>.ErrorResult("Ticket not found"));
+                }
+
+                var result = await _notificationService.SendTicketEmailAsync(ticketId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResult($"Error sending ticket email: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// DEMO: Decode QR code data to show what information is contained
+        /// </summary>
+        [HttpPost("decode-qr")]
+        [Authorize(Roles = "EventOrganizer,Admin")]
+        public async Task<ActionResult<ApiResponse<object>>> DecodeQRCode([FromBody] string qrData)
+        {
+            try
+            {
+                var ticketPayload = await _qrCodeService.ExtractTicketPayloadAsync(qrData);
+                if (ticketPayload == null)
+                {
+                    return BadRequest(ApiResponse<object>.ErrorResult("Invalid QR code data"));
+                }
+
+                var result = new
+                {
+                    RegistrationId = ticketPayload.RegistrationId,
+                    TicketTypeId = ticketPayload.TicketTypeId,
+                    UserEmail = ticketPayload.UserEmail,
+                    IssuedAt = ticketPayload.IssuedAt,
+                    ExpiresAt = ticketPayload.ExpiresAt,
+                    IsValid = await _qrCodeService.ValidateTicketDataAsync(qrData),
+                    DecodedAt = DateTime.UtcNow
+                };
+
+                return Ok(ApiResponse<object>.SuccessResult(result, "QR code decoded successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResult($"Error decoding QR code: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
         /// DEVELOPMENT ONLY: Regenerate QR codes for existing tickets
         /// </summary>
         [HttpPost("regenerate-qr/{registrationId}")]
@@ -161,6 +304,73 @@ namespace EventManagementSystem.Api.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<bool>.ErrorResult($"Error: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Download ticket as PDF
+        /// </summary>
+        [HttpGet("{ticketId}/download-pdf")]
+        [Authorize]
+        public async Task<ActionResult> DownloadTicketPdf(int ticketId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                
+                // Get ticket details with all necessary information
+                var ticketData = await _context.IssuedTickets
+                    .Include(it => it.Registration)
+                        .ThenInclude(r => r.Event)
+                            .ThenInclude(e => e.Venue)
+                    .Include(it => it.TicketType)
+                    .Where(it => it.IssuedTicketID == ticketId && it.Registration.UserID == currentUserId)
+                    .Select(it => new UserTicketDto
+                    {
+                        IssuedTicketID = it.IssuedTicketID,
+                        UniqueReferenceCode = it.UniqueReferenceCode,
+                        QRCodeData = it.QRCodeData,
+                        TicketTypeName = it.TicketType.TypeName,
+                        Price = it.TicketType.Price,
+                        AttendeeName = it.AttendeeName,
+                        AttendeeEmail = it.AttendeeEmail,
+                        CheckedInAt = it.CheckedInAt,
+                        Status = it.Status,
+                        IssuedAt = it.IssuedAt ?? DateTime.Now,
+                        
+                        // Event Details
+                        EventID = it.Registration.Event.EventID,
+                        EventName = it.Registration.Event.EventName,
+                        EventSlug = it.Registration.Event.UrlSlug,
+                        EventStartDate = it.Registration.Event.StartDate,
+                        EventEndDate = it.Registration.Event.EndDate ?? DateTime.MinValue,
+                        EventStatus = it.Registration.Event.Status,
+                        VenueName = it.Registration.Event.Venue.VenueName,
+                        VenueAddress = it.Registration.Event.Venue.Address,
+                        EventImageUrl = it.Registration.Event.ImageUrl,
+                        
+                        // Registration Details
+                        RegistrationID = it.Registration.RegisterID,
+                        RegisteredAt = it.Registration.RegisteredAt ?? DateTime.Now,
+                        RegistrationStatus = it.Registration.Status
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (ticketData == null)
+                {
+                    return NotFound("Ticket not found");
+                }
+
+                // Generate PDF
+                var pdfBytes = await _pdfService.GenerateTicketPdfAsync(ticketData);
+                
+                var fileName = $"Ticket-{ticketData.EventName.Replace(" ", "-")}-{ticketData.UniqueReferenceCode}.pdf";
+                
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error generating PDF: {ex.Message}");
             }
         }
 

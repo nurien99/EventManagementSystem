@@ -1,0 +1,172 @@
+@namespace EventManagementSystem.BlazorApp.Components.Layout
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<!-- Simplified Auth Header -->
+<header class="auth-header">
+    <nav class="navbar">
+        <div class="container">
+            <!-- Logo -->
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-calendar-check me-2"></i>
+                <span class="brand-text">Event Management System</span>
+            </a>
+            
+            <!-- Context-Aware Navigation -->
+            <div class="auth-nav">
+                @if (IsOnLoginPage)
+                {
+                    <!-- Show Register link when on login page -->
+                    <a href="/register" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-person-plus me-1"></i>
+                        Sign Up
+                    </a>
+                }
+                else if (IsOnRegisterPage)
+                {
+                    <!-- Show Sign In link when on register page -->
+                    <a href="/login" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>
+                        Sign In
+                    </a>
+                }
+                else
+                {
+                    <!-- Show both links on other pages -->
+                    <div class="d-flex gap-2">
+                        <a href="/login" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>
+                            Sign In
+                        </a>
+                        <a href="/register" class="btn btn-light btn-sm">
+                            <i class="bi bi-person-plus me-1"></i>
+                            Sign Up
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </nav>
+</header>
+
+<style>
+    .auth-header {
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        z-index: 10;
+    }
+
+    .auth-header .navbar {
+        padding: 1rem 0;
+    }
+
+    .auth-header .navbar-brand {
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.25rem;
+        transition: all 0.3s ease;
+    }
+
+    .auth-header .navbar-brand:hover {
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+    }
+
+    .auth-header .navbar-brand i {
+        color: var(--accent-color);
+        font-size: 1.5rem;
+    }
+
+    .brand-text {
+        display: inline-block;
+    }
+
+    .auth-nav .btn {
+        transition: all 0.3s ease;
+        border-color: rgba(255, 255, 255, 0.3);
+        color: white;
+    }
+
+    .auth-nav .btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .auth-nav .btn:focus {
+        box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+    }
+
+    .auth-nav .btn-light {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(255, 255, 255, 0.9);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .auth-nav .btn-light:hover {
+        background: white;
+        border-color: white;
+        color: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    @@media (max-width: 576px) {
+        .brand-text {
+            display: none;
+        }
+
+        .auth-header .navbar-brand {
+            font-size: 1.1rem;
+        }
+
+        .auth-nav .btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .auth-nav .d-flex {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+    }
+
+    @@media (max-width: 400px) {
+        .auth-header .container {
+            padding: 0 1rem;
+        }
+        
+        .auth-nav .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+
+@code {
+    private bool IsOnLoginPage => Navigation.Uri.EndsWith("/login", StringComparison.OrdinalIgnoreCase);
+    private bool IsOnRegisterPage => Navigation.Uri.EndsWith("/register", StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to navigation changes
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Force the component to re-render when navigation changes
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from navigation changes to prevent memory leaks
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

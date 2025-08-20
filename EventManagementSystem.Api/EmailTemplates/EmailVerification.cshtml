@@ -1,0 +1,81 @@
+@model EventManagementSystem.Core.DTOs.Email.UserWelcomeModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Verify Your Email Address - @Model.SiteName</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background: linear-gradient(135deg, #0295A9 0%, #12ADC1 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #0295A9 0%, #12ADC1 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; box-shadow: 0 4px 15px rgba(2, 149, 169, 0.3); }
+        .cta-button:hover { text-decoration: none; color: white; }
+        .info-box { background-color: #e8f8fa; padding: 20px; border-left: 4px solid #0295A9; border-radius: 5px; margin: 20px 0; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📧 @Model.SiteName</div>
+            <h1>Email Verification Required</h1>
+            <p>Hi @Model.UserName, please verify your email address</p>
+        </div>
+
+        <div class="content">
+            <h2>🔒 Secure Your Account</h2>
+            <p>To ensure the security of your account and to receive important updates about your events, please verify your email address by clicking the button below.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="@Model.EmailVerificationUrl" class="cta-button">
+                    ✅ Verify My Email Address
+                </a>
+            </div>
+
+            <div class="info-box">
+                <h3>🛡️ Why verify your email?</h3>
+                <ul>
+                    <li><strong>Security:</strong> Protect your account from unauthorized access</li>
+                    <li><strong>Event Updates:</strong> Receive important event notifications and reminders</li>
+                    <li><strong>Ticket Delivery:</strong> Get your digital tickets and QR codes via email</li>
+                    <li><strong>Account Recovery:</strong> Reset your password if needed</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <p><strong>⏰ Important:</strong> This verification link will expire for security reasons. If you don't see this email in your inbox, please check your spam or junk folder.</p>
+            </div>
+
+            <h3>🤔 Having Trouble?</h3>
+            <p>If the button above doesn't work, you can copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px;">
+                @Model.EmailVerificationUrl
+            </p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="@Model.LoginUrl" style="color: #0295A9; text-decoration: none; font-weight: bold;">
+                    🚪 Back to Login →
+                </a>
+            </div>
+
+            <div style="background-color: #e8f4f8; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                <p><strong>💡 Need More Help?</strong></p>
+                <p>If you continue to have issues or didn't request this verification, please contact our support team. We're here to help keep your account secure!</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; @DateTime.Now.Year @Model.SiteName. All rights reserved.</p>
+            <p>This verification email was sent to @Model.Email</p>
+            <p>Sent on @Model.SentAt.ToString("dddd, MMMM dd, yyyy 'at' h:mm tt")</p>
+            <p style="font-size: 11px; color: #bdc3c7; margin-top: 10px;">
+                If you didn't request this verification, you can safely ignore this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

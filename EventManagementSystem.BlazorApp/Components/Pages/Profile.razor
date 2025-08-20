@@ -1,0 +1,413 @@
+@page "/profile"
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.Core
+@inject ProfileService ProfileService
+@inject AuthService AuthService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageTitle>My Profile - Event Management System</PageTitle>
+
+<div class="profile-page">
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="profile-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="profile-title">
+                        <i class="bi bi-person-circle me-3"></i>My Profile
+                    </h1>
+                    <p class="profile-subtitle">
+                        Manage your personal information and account settings
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="profile-loading">
+                <div class="d-flex justify-content-center align-items-center py-5">
+                    <div class="spinner-border text-primary me-3" role="status"></div>
+                    <span>Loading profile...</span>
+                </div>
+            </div>
+        }
+        else if (hasError)
+        {
+            <div class="alert alert-danger">
+                <h5><i class="bi bi-exclamation-triangle me-2"></i>Error Loading Profile</h5>
+                <p>@errorMessage</p>
+                <button class="btn btn-danger" @onclick="LoadProfileAsync">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <!-- Profile Information Card -->
+                <div class="col-md-8">
+                    <div class="profile-card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-person me-2"></i>Profile Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <EditForm Model="profileModel" OnValidSubmit="UpdateProfileAsync">
+                                <DataAnnotationsValidator />
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Full Name *</label>
+                                        <InputText class="form-control" @bind-Value="profileModel.Name" />
+                                        <ValidationMessage For="@(() => profileModel.Name)" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Email Address *</label>
+                                        <InputText class="form-control" @bind-Value="profileModel.Email" />
+                                        <ValidationMessage For="@(() => profileModel.Email)" />
+                                        @if (!currentUser?.IsEmailVerified == true && profileModel.Email != currentUser?.Email)
+                                        {
+                                            <small class="text-warning">
+                                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                                Changing your email will require verification
+                                            </small>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Phone Number</label>
+                                        <InputText class="form-control" @bind-Value="profileModel.PhoneNumber" />
+                                        <ValidationMessage For="@(() => profileModel.PhoneNumber)" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Organization</label>
+                                        <InputText class="form-control" @bind-Value="profileModel.Organization" />
+                                        <ValidationMessage For="@(() => profileModel.Organization)" />
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" disabled="@isUpdatingProfile">
+                                        @if (isUpdatingProfile)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                            <text>Updating...</text>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-check-circle me-2"></i>
+                                            <text>Update Profile</text>
+                                        }
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" @onclick="ResetProfile">
+                                        <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Changes
+                                    </button>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Status & Settings -->
+                <div class="col-md-4">
+                    <!-- Account Status Card -->
+                    <div class="profile-card mb-4">
+                        <div class="card-header">
+                            <h5><i class="bi bi-shield-check me-2"></i>Account Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-item mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Email Verification</span>
+                                    @if (currentUser?.IsEmailVerified == true)
+                                    {
+                                        <span class="badge bg-success">Verified</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning">Pending</span>
+                                    }
+                                </div>
+                                @if (currentUser?.IsEmailVerified != true)
+                                {
+                                    <div class="d-flex flex-column gap-2">
+                                        <small class="text-muted">Check your email for verification link</small>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                @onclick="ResendEmailVerificationAsync" 
+                                                disabled="@isResendingVerification">
+                                            @if (isResendingVerification)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                <text>Sending...</text>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-envelope-plus me-2"></i>
+                                                <text>Resend Verification Email</text>
+                                            }
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="status-item mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Account Role</span>
+                                    <span class="badge bg-info">@currentUser?.Role.ToString()</span>
+                                </div>
+                            </div>
+
+                            <div class="status-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Member Since</span>
+                                    <span class="text-muted">@currentUser?.CreatedAt?.ToString("MMM yyyy")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Password Change Card -->
+                    <div class="profile-card">
+                        <div class="card-header">
+                            <h5><i class="bi bi-key me-2"></i>Change Password</h5>
+                        </div>
+                        <div class="card-body">
+                            <EditForm Model="passwordModel" OnValidSubmit="ChangePasswordAsync">
+                                <DataAnnotationsValidator />
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Current Password *</label>
+                                    <InputText type="password" class="form-control" @bind-Value="passwordModel.CurrentPassword" />
+                                    <ValidationMessage For="@(() => passwordModel.CurrentPassword)" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">New Password *</label>
+                                    <InputText type="password" class="form-control" @bind-Value="passwordModel.NewPassword" />
+                                    <ValidationMessage For="@(() => passwordModel.NewPassword)" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Confirm New Password *</label>
+                                    <InputText type="password" class="form-control" @bind-Value="passwordModel.ConfirmNewPassword" />
+                                    <ValidationMessage For="@(() => passwordModel.ConfirmNewPassword)" />
+                                </div>
+
+                                <button type="submit" class="btn btn-warning w-100" disabled="@isChangingPassword">
+                                    @if (isChangingPassword)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <text>Changing...</text>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-shield-lock me-2"></i>
+                                        <text>Change Password</text>
+                                    }
+                                </button>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private UserDto? currentUser;
+    private UpdateProfileDto profileModel = new();
+    private ChangePasswordDto passwordModel = new();
+    
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    private bool isUpdatingProfile = false;
+    private bool isChangingPassword = false;
+    private bool isResendingVerification = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileAsync();
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            errorMessage = "";
+            
+            StateHasChanged();
+
+            // Check authentication first
+            if (!await AuthService.IsAuthenticatedAsync())
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            // Load user profile
+            var response = await ProfileService.GetCurrentUserAsync();
+            
+            if (response == null || !response.Success)
+            {
+                throw new Exception(response?.Message ?? "Failed to load profile");
+            }
+            
+            currentUser = response.Data;
+            
+            // Initialize profile model with current data
+            if (currentUser != null)
+            {
+                profileModel = new UpdateProfileDto
+                {
+                    Name = currentUser.Name ?? "",
+                    Email = currentUser.Email ?? "",
+                    PhoneNumber = currentUser.PhoneNumber,
+                    Organization = currentUser.Organization
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = ex.Message;
+            Console.WriteLine($"Error loading profile: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateProfileAsync()
+    {
+        try
+        {
+            isUpdatingProfile = true;
+            StateHasChanged();
+
+            var response = await ProfileService.UpdateProfileAsync(profileModel);
+            
+            if (response == null || !response.Success)
+            {
+                throw new Exception(response?.Message ?? "Failed to update profile");
+            }
+            
+            currentUser = response.Data;
+
+            await ShowSuccessMessage("Profile updated successfully!");
+            
+            // If email changed, update auth state
+            if (currentUser != null)
+            {
+                await AuthService.UpdateUserInfoAsync(currentUser);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessage($"Error updating profile: {ex.Message}");
+        }
+        finally
+        {
+            isUpdatingProfile = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        try
+        {
+            isChangingPassword = true;
+            StateHasChanged();
+
+            var response = await ProfileService.ChangePasswordAsync(passwordModel);
+            
+            if (response == null || !response.Success)
+            {
+                throw new Exception(response?.Message ?? "Failed to change password");
+            }
+
+            // Clear password form
+            passwordModel = new ChangePasswordDto();
+
+            await ShowSuccessMessage("Password changed successfully!");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessage($"Error changing password: {ex.Message}");
+        }
+        finally
+        {
+            isChangingPassword = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetProfile()
+    {
+        if (currentUser != null)
+        {
+            profileModel = new UpdateProfileDto
+            {
+                Name = currentUser.Name ?? "",
+                Email = currentUser.Email ?? "",
+                PhoneNumber = currentUser.PhoneNumber,
+                Organization = currentUser.Organization
+            };
+        }
+        StateHasChanged();
+    }
+
+    private async Task ResendEmailVerificationAsync()
+    {
+        try
+        {
+            if (currentUser?.Email == null)
+            {
+                await ShowErrorMessage("No email address found");
+                return;
+            }
+
+            isResendingVerification = true;
+            StateHasChanged();
+
+            var response = await ProfileService.ResendEmailVerificationAsync(currentUser.Email);
+            
+            if (response == null || !response.Success)
+            {
+                throw new Exception(response?.Message ?? "Failed to send verification email");
+            }
+
+            await ShowSuccessMessage("Verification email sent! Please check your inbox and spam folder.");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessage($"Error sending verification email: {ex.Message}");
+        }
+        finally
+        {
+            isResendingVerification = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowSuccessMessage(string message)
+    {
+        await JSRuntime.InvokeVoidAsync("showAlert", "success", message);
+    }
+
+    private async Task ShowErrorMessage(string message)
+    {
+        await JSRuntime.InvokeVoidAsync("showAlert", "error", message);
+    }
+}

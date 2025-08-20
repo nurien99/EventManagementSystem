@@ -56,6 +56,23 @@
         public string ContactEmail { get; set; } = string.Empty;
     }
 
+    public class TicketDeliveryModel : BaseEmailModel
+    {
+        public string EventTitle { get; set; } = string.Empty;
+        public string EventDescription { get; set; } = string.Empty;
+        public DateTime EventStartDate { get; set; }
+        public DateTime? EventEndDate { get; set; }
+        public string VenueName { get; set; } = string.Empty;
+        public string VenueAddress { get; set; } = string.Empty;
+        public string TicketNumber { get; set; } = string.Empty;
+        public string TicketTypeName { get; set; } = string.Empty;
+        public decimal TicketPrice { get; set; }
+        public string AttendeeName { get; set; } = string.Empty;
+        public string QRCodeBase64 { get; set; } = string.Empty;
+        public string EventUrl { get; set; } = string.Empty;
+        public string CheckInInstructions { get; set; } = string.Empty;
+    }
+
     public class TicketTypeInfo
     {
         public string TypeName { get; set; } = string.Empty;

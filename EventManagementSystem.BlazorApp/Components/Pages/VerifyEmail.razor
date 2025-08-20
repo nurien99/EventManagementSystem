@@ -1,0 +1,205 @@
+@page "/verify-email"
+@using EventManagementSystem.BlazorApp.Services
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Email Verification - Event Management System</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body text-center p-5">
+                    
+                    @if (isLoading)
+                    {
+                        <div class="mb-4">
+                            <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
+                                <span class="visually-hidden">Verifying your email...</span>
+                            </div>
+                        </div>
+                        <h3 class="mb-3">Verifying Your Email</h3>
+                        <p class="text-muted">Please wait while we verify your email address...</p>
+                    }
+                    else if (verificationSuccess)
+                    {
+                        <div class="mb-4">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="text-success mb-3">Email Verified Successfully!</h3>
+                        <p class="mb-4">
+                            Your email address has been verified. You can now access all features of the Event Management System.
+                        </p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" @onclick="NavigateToLogin">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Continue to Login
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="NavigateToHome">
+                                <i class="bi bi-house me-2"></i>Go to Home
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-4">
+                            <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="text-warning mb-3">Verification Failed</h3>
+                        <p class="mb-4 text-muted">
+                            @errorMessage
+                        </p>
+                        
+                        <div class="alert alert-info mb-4">
+                            <h6 class="alert-heading">Common Issues:</h6>
+                            <ul class="mb-0 text-start">
+                                <li>The verification link may have expired</li>
+                                <li>The link may have already been used</li>
+                                <li>The email address may already be verified</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" @onclick="ResendVerification" disabled="@isResending">
+                                @if (isResending)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Sending...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-envelope me-2"></i>
+                                    <span>Resend Verification Email</span>
+                                }
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="NavigateToLogin">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Back to Login
+                            </button>
+                        </div>
+                        
+                        @if (resendMessage != null)
+                        {
+                            <div class="alert @(resendSuccess ? "alert-success" : "alert-danger") mt-3">
+                                @resendMessage
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Email { get; set; }
+
+    private bool isLoading = true;
+    private bool verificationSuccess = false;
+    private string errorMessage = "";
+    private bool isResending = false;
+    private string? resendMessage = null;
+    private bool resendSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await VerifyEmailAsync();
+    }
+
+    private async Task VerifyEmailAsync()
+    {
+        if (string.IsNullOrEmpty(Token) || string.IsNullOrEmpty(Email))
+        {
+            isLoading = false;
+            errorMessage = "Invalid verification link. The token or email is missing.";
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var result = await AuthService.VerifyEmailAsync(Email, Token);
+            
+            if (result?.Success == true)
+            {
+                verificationSuccess = true;
+                
+                // Show success message for 3 seconds then redirect
+                await Task.Delay(3000);
+                NavigateToLogin();
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "Email verification failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Email verification error: {ex.Message}");
+            errorMessage = "An error occurred during verification. Please try again later.";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResendVerification()
+    {
+        if (string.IsNullOrEmpty(Email))
+        {
+            resendMessage = "Cannot resend verification email. Email address is missing.";
+            resendSuccess = false;
+            StateHasChanged();
+            return;
+        }
+
+        isResending = true;
+        resendMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await AuthService.ResendVerificationEmailAsync(Email);
+            
+            if (result?.Success == true)
+            {
+                resendMessage = "Verification email has been resent. Please check your inbox.";
+                resendSuccess = true;
+            }
+            else
+            {
+                resendMessage = result?.Message ?? "Failed to resend verification email.";
+                resendSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Resend verification error: {ex.Message}");
+            resendMessage = "An error occurred while resending the email. Please try again later.";
+            resendSuccess = false;
+        }
+        finally
+        {
+            isResending = false;
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void NavigateToHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

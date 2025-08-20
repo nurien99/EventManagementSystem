@@ -12,5 +12,8 @@ namespace EventManagementSystem.Api.Services.Interfaces
         Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
         Task<ApiResponse<bool>> SendEmailVerificationAsync(int userId);
         Task<ApiResponse<bool>> VerifyEmailAsync(string email, string token);
+        Task<ApiResponse<UserDto>> UpgradeToOrganizerAsync(int userId);
+        Task<ApiResponse<UserDto>> UpdateProfileAsync(int userId, UpdateProfileDto updateProfileDto);
+        Task<ApiResponse<bool>> ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto);
     }
 }

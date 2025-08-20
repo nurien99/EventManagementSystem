@@ -9,5 +9,6 @@ namespace EventManagementSystem.Api.Services.Interfaces
         Task<ApiResponse<TicketCheckInDetails>> GetTicketDetailsByCodeAsync(string ticketCode);
         Task<ApiResponse<List<TicketCheckInDetails>>> GetEventCheckInsAsync(int eventId);
         Task<ApiResponse<bool>> UndoCheckInAsync(int ticketId, int userId);
+        Task<ApiResponse<List<UserTicketDto>>> GetUserTicketsAsync(int userId);
     }
 }

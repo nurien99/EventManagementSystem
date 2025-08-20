@@ -1,0 +1,353 @@
+﻿@page "/"
+@page "/home"
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.BlazorApp.Services
+@inject EventService EventService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Event Management System - Discover Amazing Events</PageTitle>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <h1>Discover Amazing Events</h1>
+        <p class="lead">Find and register for events that interest you. From conferences to workshops, discover your next great experience.</p>
+    </div>
+</section>
+
+<!-- Main Content Container -->
+<div class="main-content-container">
+    <!-- Search Container -->
+    <div class="search-container">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label text-muted fw-semibold">Search Events</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control border-start-0" 
+                           placeholder="Search events..." 
+                           @bind="searchTerm" 
+                           @oninput="OnSearchInput">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-muted fw-semibold">Category</label>
+                <select class="form-select" @bind="selectedCategory">
+                    <option value="">All Categories</option>
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category.CategoryID">@category.CategoryName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary" @onclick="SearchEvents">
+                    <i class="bi bi-search me-2"></i>Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Events Section -->
+    <section class="featured-events-section">
+        <div class="container">
+            @if (!isLoading && events.Any())
+            {
+                <div class="section-header">
+                    <div>
+                        <h2>Featured Events</h2>
+                        <p class="section-subtitle">Don't miss these amazing upcoming events</p>
+                    </div>
+                    <a href="/browse-events" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-right me-2"></i>View All Events
+                    </a>
+                </div>
+            }
+
+            <!-- Events Grid -->
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading amazing events...</span>
+                    </div>
+                    <p class="text-muted mt-3">Loading amazing events...</p>
+                </div>
+            }
+            else if (!events.Any())
+            {
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-calendar-x" style="font-size: 4rem; color: var(--gray-400);"></i>
+                    </div>
+                    <h3 class="text-muted mb-3">No events found</h3>
+                    <p class="text-muted">Be the first to create an amazing event!</p>
+                    <a href="/create-event" class="btn btn-primary btn-lg">
+                        <i class="bi bi-plus-circle me-2"></i>Create Your First Event
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var eventItem in events.Take(6))
+                    {
+                        <div class="col-lg-4 col-md-6">
+                            <div class="card h-100 fade-in-up">
+                                <!-- Event Image -->
+                                <div class="card-img-container">
+                                    @if (!string.IsNullOrEmpty(eventItem.ImageUrl))
+                                    {
+                                        <img src="@eventItem.ImageUrl" 
+                                             class="card-img-top" 
+                                             alt="@eventItem.EventName">
+                                    }
+                                    else
+                                    {
+                                        <div class="card-img-placeholder">
+                                            <i class="bi bi-calendar-event"></i>
+                                        </div>
+                                    }
+                                    
+                                    <!-- Event Status Badge -->
+                                    @if (eventItem.Status == EventManagementSystem.Core.EventStatus.Published)
+                                    {
+                                        <span class="live-badge">Live</span>
+                                    }
+                                </div>
+                                
+                                <div class="card-body">
+                                    <!-- Event Title -->
+                                    <h5 class="card-title">@eventItem.EventName</h5>
+                                    
+                                    <!-- Event Description -->
+                                    <p class="card-text">
+                                        @if (!string.IsNullOrEmpty(eventItem.EventDesc))
+                                        {
+                                            @(eventItem.EventDesc.Length > 120 ? eventItem.EventDesc.Substring(0, 120) + "..." : eventItem.EventDesc)
+                                        }
+                                        else
+                                        {
+                                            <em class="text-muted">Join us for this exciting event!</em>
+                                        }
+                                    </p>
+                                    
+                                    <!-- Event Details -->
+                                    <div class="event-details mb-3">
+                                        <div class="detail-item">
+                                            <i class="bi bi-calendar3"></i>
+                                            <span>
+                                                @eventItem.StartDate?.ToString("MMM dd, yyyy")
+                                                @if (eventItem.EndDate.HasValue)
+                                                {
+                                                    @(" - " + eventItem.EndDate.Value.ToString("MMM dd"))
+                                                }
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="detail-item">
+                                            <i class="bi bi-clock"></i>
+                                            <span>@eventItem.StartDate?.ToString("h:mm tt")</span>
+                                        </div>
+                                        
+                                        <div class="detail-item">
+                                            <i class="bi bi-geo-alt"></i>
+                                            <span>@eventItem.VenueName</span>
+                                        </div>
+                                        
+                                        @if (!string.IsNullOrEmpty(eventItem.CategoryName))
+                                        {
+                                            <div class="mt-2">
+                                                <span class="category-pill">@eventItem.CategoryName</span>
+                                            </div>
+                                        }
+                                    </div>
+                                    
+                                    <!-- Card Meta -->
+                                    <div class="card-meta">
+                                        <div class="registration-info">
+                                            <small class="text-muted">
+                                                <i class="bi bi-people me-1"></i>
+                                                @eventItem.TotalRegistrations registered
+                                            </small>
+                                            @if (eventItem.MaxCapacity.HasValue && eventItem.AvailableSpots > 0)
+                                            {
+                                                <br>
+                                                <small class="text-muted">
+                                                    @eventItem.AvailableSpots spots left
+                                                </small>
+                                            }
+                                        </div>
+                                        
+                                        <div class="price-info">
+                                            @if (eventItem.TicketTypes.Any())
+                                            {
+                                                @GetPriceInfo(eventItem)
+                                            }
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Action Button -->
+                                    <div class="mt-3">
+                                        <button class="btn btn-primary w-100" @onclick="() => ViewEventDetails(eventItem.EventID)">
+                                            <i class="bi bi-eye me-2"></i>View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                
+                <!-- Show More Events Button -->
+                @if (events.Count > 6)
+                {
+                    <div class="text-center mt-5">
+                        <a href="/browse-events" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-arrow-right me-2"></i>View All @events.Count Events
+                        </a>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="cta-card primary">
+                        <div class="cta-icon">
+                            <i class="bi bi-calendar-plus"></i>
+                        </div>
+                        <h4>Create Your Event</h4>
+                        <p>Host your own amazing event and reach thousands of potential attendees</p>
+                        <a href="/create-event" class="btn btn-light btn-lg">
+                            <i class="bi bi-plus-circle me-2"></i>Get Started
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="cta-card secondary">
+                        <div class="cta-icon">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <h4>Join Our Community</h4>
+                        <p>Sign up to get personalized event recommendations and exclusive updates</p>
+                        <a href="/register" class="btn btn-light btn-lg">
+                            <i class="bi bi-person-plus me-2"></i>Join Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    private List<EventDto> events = new();
+    private List<CategoryDto> categories = new();
+    private bool isLoading = true;
+    private string searchTerm = "";
+    private string selectedCategory = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInitialData();
+    }
+
+    private async Task LoadInitialData()
+    {
+        isLoading = true;
+        try
+        {
+            // Load events and categories simultaneously
+            var eventsTask = EventService.GetEventsAsync();
+            var categoriesTask = EventService.GetCategoriesAsync();
+            
+            await Task.WhenAll(eventsTask, categoriesTask);
+            
+            events = await eventsTask;
+            categories = await categoriesTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading initial data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SearchEvents()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            var filter = new EventFilterDto
+            {
+                SearchTerm = searchTerm,
+                CategoryID = string.IsNullOrEmpty(selectedCategory) ? null : int.Parse(selectedCategory)
+            };
+            
+            events = await EventService.GetEventsAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error searching events: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        
+        // Debounce search - wait 500ms after user stops typing
+        await Task.Delay(500);
+        if (searchTerm == (e.Value?.ToString() ?? ""))
+        {
+            await SearchEvents();
+        }
+    }
+
+    private void ViewEventDetails(int eventId)
+    {
+        Navigation.NavigateTo($"/events/{eventId}");
+    }
+
+    private RenderFragment GetPriceInfo(EventDto eventItem)
+    {
+        return builder =>
+        {
+            var paidTickets = eventItem.TicketTypes.Where(t => t.Price > 0).ToList();
+            if (paidTickets.Any())
+            {
+                builder.OpenElement(0, "div");
+                builder.AddAttribute(1, "class", "price-tag");
+                builder.AddContent(2, $"From ${paidTickets.Min(t => t.Price)}");
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.OpenElement(0, "div");
+                builder.AddAttribute(1, "class", "price-tag free");
+                builder.AddContent(2, "FREE");
+                builder.CloseElement();
+            }
+        };
+    }
+}

@@ -1,4 +1,5 @@
 ﻿using EventManagementSystem.Core.DTOs;
+using EventManagementSystem.Core;
 
 namespace EventManagementSystem.Api.Services.Interfaces
 {
@@ -13,5 +14,6 @@ namespace EventManagementSystem.Api.Services.Interfaces
         Task<ApiResponse<List<EventDto>>> GetUserEventsAsync(int organizerId);
         Task<ApiResponse<EventDto>> PublishEventAsync(int eventId, int organizerId);
         Task<ApiResponse<EventDto>> CancelEventAsync(int eventId, int organizerId, string reason);
+        Task<ApiResponse<bool>> UpdateEventStatusAsync(int eventId, EventStatus status, int organizerId);
     }
 }

@@ -1,0 +1,846 @@
+@page "/edit-event/{eventId:int}"
+@using EventManagementSystem.Core.DTOs
+@using EventManagementSystem.Core
+@using EventManagementSystem.BlazorApp.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject EventService EventService
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Edit Event - Event Management System</PageTitle>
+
+<!-- Edit Event Page -->
+<div class="edit-event-page">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div>
+                            <h1 class="page-title">
+                                <i class="bi bi-pencil-square me-3"></i>Edit Event
+                            </h1>
+                            <p class="page-subtitle">
+                                @if (eventDto != null)
+                                {
+                                    <span>@eventDto.EventName</span>
+                                }
+                                else
+                                {
+                                    <span>Loading event details...</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="/my-events" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Back to Events
+                            </a>
+                            @if (eventDto != null)
+                            {
+                                <a href="/events/@eventDto.UrlSlug" target="_blank" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye me-2"></i>Preview
+                                </a>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Progress Steps -->
+                    <div class="progress-steps">
+                        <div class="step @(currentStep == 1 ? "active" : currentStep > 1 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 1 ? "bi-check" : "bi-1-circle")"></i>
+                            </div>
+                            <div class="step-label">Basic Info</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 1 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 2 ? "active" : currentStep > 2 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 2 ? "bi-check" : "bi-2-circle")"></i>
+                            </div>
+                            <div class="step-label">Image & Media</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 2 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 3 ? "active" : currentStep > 3 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 3 ? "bi-check" : "bi-3-circle")"></i>
+                            </div>
+                            <div class="step-label">Venue & Details</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 3 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 4 ? "active" : currentStep > 4 ? "completed" : "")">
+                            <div class="step-circle">
+                                <i class="bi @(currentStep > 4 ? "bi-check" : "bi-4-circle")"></i>
+                            </div>
+                            <div class="step-label">Tickets</div>
+                        </div>
+                        <div class="step-connector @(currentStep > 4 ? "completed" : "")"></div>
+                        
+                        <div class="step @(currentStep == 5 ? "active" : "")">
+                            <div class="step-circle">
+                                <i class="bi bi-5-circle"></i>
+                            </div>
+                            <div class="step-label">Publish</div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (isLoading)
+                {
+                    <div class="loading-container">
+                        <div class="d-flex justify-content-center py-5">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading event...</span>
+                                </div>
+                                <p class="text-muted">Loading event details...</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (hasError)
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <h4 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Error</h4>
+                        <p>@errorMessage</p>
+                        <a href="/my-events" class="btn btn-primary">Back to My Events</a>
+                    </div>
+                }
+                else if (eventDto != null)
+                {
+                    <!-- Form Container -->
+                    <div class="form-container">
+                        <EditForm Model="eventDto" OnValidSubmit="SaveEvent" OnInvalidSubmit="HandleInvalidSubmit">
+                            <DataAnnotationsValidator />
+
+                            <!-- Step Content -->
+                            <div class="step-content">
+                                @if (currentStep == 1)
+                                {
+                                    <!-- Basic Information Step -->
+                                    <div class="step-panel">
+                                        <div class="step-header">
+                                            <h3><i class="bi bi-info-circle me-2"></i>Basic Information</h3>
+                                            <p>Update your event details, description, and scheduling</p>
+                                        </div>
+
+                                        <div class="row g-4">
+                                            <div class="col-12">
+                                                <div class="form-group">
+                                                    <label for="eventName" class="form-label required">Event Name</label>
+                                                    <InputText id="eventName" class="form-control" 
+                                                              @bind-Value="eventDto.EventName" placeholder="Enter your event name" />
+                                                    <ValidationMessage For="() => eventDto.EventName" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <div class="form-group">
+                                                    <label for="eventDesc" class="form-label">Event Description</label>
+                                                    <InputTextArea id="eventDesc" class="form-control" rows="6" 
+                                                                  @bind-Value="eventDto.EventDesc" placeholder="Describe your event in detail..." />
+                                                    <ValidationMessage For="() => eventDto.EventDesc" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="startDate" class="form-label required">Start Date & Time</label>
+                                                    <InputDate Type="InputDateType.DateTimeLocal" id="startDate" class="form-control" 
+                                                              @bind-Value="eventDto.StartDate" />
+                                                    <ValidationMessage For="() => eventDto.StartDate" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="endDate" class="form-label">End Date & Time</label>
+                                                    <InputDate Type="InputDateType.DateTimeLocal" id="endDate" class="form-control" 
+                                                              @bind-Value="eventDto.EndDate" />
+                                                    <ValidationMessage For="() => eventDto.EndDate" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="registrationDeadline" class="form-label">Registration Deadline</label>
+                                                    <InputDate Type="InputDateType.DateTimeLocal" id="registrationDeadline" class="form-control" 
+                                                              @bind-Value="eventDto.RegistrationDeadline" />
+                                                    <ValidationMessage For="() => eventDto.RegistrationDeadline" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="maxCapacity" class="form-label">Maximum Capacity</label>
+                                                    <InputNumber id="maxCapacity" class="form-control" 
+                                                                @bind-Value="eventDto.MaxCapacity" placeholder="Leave empty for unlimited" />
+                                                    <ValidationMessage For="() => eventDto.MaxCapacity" class="invalid-feedback" />
+                                                    <small class="form-text text-muted">Leave empty for unlimited capacity</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else if (currentStep == 2)
+                                {
+                                    <!-- Image & Media Step -->
+                                    <div class="step-panel">
+                                        <div class="step-header">
+                                            <h3><i class="bi bi-image me-2"></i>Image & Media</h3>
+                                            <p>Upload an eye-catching image for your event</p>
+                                        </div>
+
+                                        <div class="row g-4">
+                                            <div class="col-12">
+                                                <!-- Current Image Display -->
+                                                @if (!string.IsNullOrEmpty(eventDto.ImageUrl))
+                                                {
+                                                    <div class="current-image mb-4">
+                                                        <h5>Current Image</h5>
+                                                        <div class="image-preview">
+                                                            <img src="@eventDto.ImageUrl" alt="Current event image" class="preview-img">
+                                                            <div class="image-overlay">
+                                                                <button type="button" class="btn btn-danger btn-sm" @onclick="RemoveCurrentImage">
+                                                                    <i class="bi bi-trash"></i> Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+
+                                                <!-- Image Upload -->
+                                                <div class="image-upload">
+                                                    <h5>@(string.IsNullOrEmpty(eventDto.ImageUrl) ? "Upload Image" : "Replace Image")</h5>
+                                                    <div class="upload-area @(isDragActive ? "drag-active" : "")" 
+                                                         @ondrop="HandleDrop" @ondragover:preventDefault="true" @ondragenter="HandleDragEnter" @ondragleave="HandleDragLeave">
+                                                        <div class="upload-content">
+                                                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                                            <h6>Drag & drop your image here</h6>
+                                                            <p class="text-muted">or click to browse files</p>
+                                                            <InputFile @ref="fileInputRef" OnChange="HandleFileSelection" accept="image/*" style="display: none;" />
+                                                            <button type="button" class="btn btn-primary" @onclick="TriggerFileInput">
+                                                                <i class="bi bi-upload me-2"></i>Choose Image
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <small class="form-text text-muted">
+                                                        Recommended: 1200x600px, JPG or PNG, max 5MB
+                                                    </small>
+
+                                                    @if (isUploading)
+                                                    {
+                                                        <div class="upload-progress mt-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                                                <span>Uploading image...</span>
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    @if (!string.IsNullOrEmpty(uploadMessage))
+                                                    {
+                                                        <div class="alert @(uploadSuccess ? "alert-success" : "alert-danger") mt-3" role="alert">
+                                                            @uploadMessage
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <!-- Manual URL Input -->
+                                            <div class="col-12">
+                                                <div class="form-group">
+                                                    <label for="imageUrl" class="form-label">Or enter image URL</label>
+                                                    <InputText id="imageUrl" class="form-control" 
+                                                              @bind-Value="eventDto.ImageUrl" placeholder="https://example.com/image.jpg" />
+                                                    <ValidationMessage For="() => eventDto.ImageUrl" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else if (currentStep == 3)
+                                {
+                                    <!-- Venue & Details Step -->
+                                    <div class="step-panel">
+                                        <div class="step-header">
+                                            <h3><i class="bi bi-geo-alt me-2"></i>Venue & Details</h3>
+                                            <p>Set the location and categorize your event</p>
+                                        </div>
+
+                                        <div class="row g-4">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="venueName" class="form-label required">Venue Name</label>
+                                                    <InputText id="venueName" class="form-control" 
+                                                              @bind-Value="eventDto.VenueName" placeholder="Enter venue name" />
+                                                    <ValidationMessage For="() => eventDto.VenueName" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="categoryId" class="form-label">Category</label>
+                                                    <InputSelect id="categoryId" class="form-select" @bind-Value="eventDto.CategoryID">
+                                                        <option value="">Select a category</option>
+                                                        @foreach (var category in categories)
+                                                        {
+                                                            <option value="@category.CategoryID">@category.CategoryName</option>
+                                                        }
+                                                    </InputSelect>
+                                                    <ValidationMessage For="() => eventDto.CategoryID" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <div class="form-group">
+                                                    <label for="venueAddress" class="form-label">Venue Address</label>
+                                                    <InputTextArea id="venueAddress" class="form-control" rows="3" 
+                                                                  @bind-Value="eventDto.VenueAddress" placeholder="Enter the full venue address" />
+                                                    <ValidationMessage For="() => eventDto.VenueAddress" class="invalid-feedback" />
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <div class="form-group">
+                                                    <label for="urlSlug" class="form-label">URL Slug</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">yourdomain.com/events/</span>
+                                                        <InputText id="urlSlug" class="form-control" 
+                                                                  @bind-Value="eventDto.UrlSlug" placeholder="my-awesome-event" />
+                                                    </div>
+                                                    <ValidationMessage For="() => eventDto.UrlSlug" class="invalid-feedback" />
+                                                    <small class="form-text text-muted">This will be the web address for your event</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else if (currentStep == 4)
+                                {
+                                    <!-- Tickets Step -->
+                                    <div class="step-panel">
+                                        <div class="step-header">
+                                            <h3><i class="bi bi-ticket-perforated me-2"></i>Ticket Types</h3>
+                                            <p>Configure different ticket types and pricing</p>
+                                        </div>
+
+                                        <div class="tickets-section">
+                                            @if (eventDto.TicketTypes?.Any() == true)
+                                            {
+                                                @for (int i = 0; i < eventDto.TicketTypes.Count; i++)
+                                                {
+                                                    var index = i; // Capture for lambda
+                                                    var ticket = eventDto.TicketTypes[index];
+                                                    
+                                                    <div class="ticket-card mb-3">
+                                                        <div class="card-body">
+                                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                                <h6 class="mb-0">Ticket Type @(index + 1)</h6>
+                                                                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => RemoveTicketType(index)">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                            
+                                                            <div class="row g-3">
+                                                                <div class="col-md-6">
+                                                                    <label class="form-label">Ticket Name</label>
+                                                                    <InputText class="form-control" @bind-Value="ticket.TypeName" placeholder="e.g., General Admission" />
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <label class="form-label">Price</label>
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text">$</span>
+                                                                        <InputNumber class="form-control" @bind-Value="ticket.Price" placeholder="0.00" />
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-3">
+                                                                    <label class="form-label">Quantity</label>
+                                                                    <InputNumber class="form-control" @bind-Value="ticket.Quantity" placeholder="100" />
+                                                                </div>
+                                                                <div class="col-12">
+                                                                    <label class="form-label">Description</label>
+                                                                    <InputTextArea class="form-control" rows="2" @bind-Value="ticket.Description" placeholder="Describe what's included..." />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <div class="alert alert-info">
+                                                    <i class="bi bi-info-circle me-2"></i>
+                                                    No ticket types configured yet. Add at least one ticket type to allow registrations.
+                                                </div>
+                                            }
+
+                                            <button type="button" class="btn btn-outline-primary" @onclick="AddTicketType">
+                                                <i class="bi bi-plus-circle me-2"></i>Add Ticket Type
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                else if (currentStep == 5)
+                                {
+                                    <!-- Publish Step -->
+                                    <div class="step-panel">
+                                        <div class="step-header">
+                                            <h3><i class="bi bi-broadcast me-2"></i>Publish Event</h3>
+                                            <p>Review your event details and publish when ready</p>
+                                        </div>
+
+                                        <div class="publish-section">
+                                            <!-- Event Status -->
+                                            <div class="status-card mb-4">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div>
+                                                        <h5>Current Status</h5>
+                                                        <p class="mb-0">
+                                                            <span class="status-badge @GetStatusClass(eventDto.Status)">
+                                                                @eventDto.Status
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        @if (eventDto.Status == EventStatus.Draft)
+                                                        {
+                                                            <button type="button" class="btn btn-success" @onclick="PublishEvent">
+                                                                <i class="bi bi-broadcast me-2"></i>Publish Event
+                                                            </button>
+                                                        }
+                                                        else if (eventDto.Status == EventStatus.Published)
+                                                        {
+                                                            <button type="button" class="btn btn-warning" @onclick="UnpublishEvent">
+                                                                <i class="bi bi-eye-slash me-2"></i>Unpublish Event
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Event Preview -->
+                                            <div class="preview-card">
+                                                <h5 class="mb-3">Event Preview</h5>
+                                                <div class="event-preview">
+                                                    <div class="preview-image">
+                                                        @if (!string.IsNullOrEmpty(eventDto.ImageUrl))
+                                                        {
+                                                            <img src="@eventDto.ImageUrl" alt="@eventDto.EventName" class="preview-img">
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="placeholder-preview">
+                                                                <i class="bi bi-calendar-event"></i>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div class="preview-content">
+                                                        <h4>@eventDto.EventName</h4>
+                                                        <div class="preview-details">
+                                                            <div class="preview-detail">
+                                                                <i class="bi bi-calendar3"></i>
+                                                                <span>@eventDto.StartDate?.ToString("MMM dd, yyyy HH:mm")</span>
+                                                            </div>
+                                                            <div class="preview-detail">
+                                                                <i class="bi bi-geo-alt"></i>
+                                                                <span>@eventDto.VenueName</span>
+                                                            </div>
+                                                            @if (eventDto.MaxCapacity.HasValue)
+                                                            {
+                                                                <div class="preview-detail">
+                                                                    <i class="bi bi-people"></i>
+                                                                    <span>Max @eventDto.MaxCapacity attendees</span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        @if (!string.IsNullOrEmpty(eventDto.EventDesc))
+                                                        {
+                                                            <p class="preview-description">
+                                                                @(eventDto.EventDesc.Length > 150 ? eventDto.EventDesc.Substring(0, 150) + "..." : eventDto.EventDesc)
+                                                            </p>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Step Navigation -->
+                            <div class="step-navigation">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        @if (currentStep > 1)
+                                        {
+                                            <button type="button" class="btn btn-outline-secondary" @onclick="PreviousStep">
+                                                <i class="bi bi-arrow-left me-2"></i>Previous
+                                            </button>
+                                        }
+                                    </div>
+                                    
+                                    <div class="step-info">
+                                        <small class="text-muted">Step @currentStep of 5</small>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-success" disabled="@isSaving">
+                                            @if (isSaving)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                <span>Saving...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-save me-2"></i>
+                                                <span>Save Changes</span>
+                                            }
+                                        </button>
+                                        
+                                        @if (currentStep < 5)
+                                        {
+                                            <button type="button" class="btn btn-primary" @onclick="NextStep">
+                                                Next<i class="bi bi-arrow-right ms-2"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int EventId { get; set; }
+    
+    private EventDto? eventDto;
+    private List<CategoryDto> categories = new();
+    private int currentStep = 1;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool hasError = false;
+    private string? errorMessage;
+    
+    // Image upload
+    private InputFile? fileInputRef;
+    private bool isUploading = false;
+    private bool isDragActive = false;
+    private string? uploadMessage;
+    private bool uploadSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEventData();
+        await LoadCategories();
+    }
+
+    private async Task LoadEventData()
+    {
+        isLoading = true;
+        hasError = false;
+        errorMessage = null;
+
+        try
+        {
+            // Check authentication
+            var currentUser = await AuthService.GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            // Load event
+            eventDto = await EventService.GetEventByIdAsync(EventId);
+            
+            if (eventDto == null)
+            {
+                hasError = true;
+                errorMessage = "Event not found.";
+                return;
+            }
+
+            // Check if user owns this event
+            if (eventDto.UserID != currentUser.UserID && currentUser.Role != UserRole.Admin)
+            {
+                hasError = true;
+                errorMessage = "You don't have permission to edit this event.";
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = "Failed to load event data.";
+            Console.WriteLine($"Error loading event: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            categories = await EventService.GetCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading categories: {ex.Message}");
+        }
+    }
+
+    private async Task SaveEvent()
+    {
+        if (eventDto == null) return;
+
+        isSaving = true;
+        try
+        {
+            var success = await EventService.UpdateEventAsync(eventDto);
+            if (success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Event saved successfully!");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to save event. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving event: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", "Error saving event. Please try again.");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        // Handle validation errors
+    }
+
+    private void NextStep()
+    {
+        if (currentStep < 5)
+        {
+            currentStep++;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 1)
+        {
+            currentStep--;
+            StateHasChanged();
+        }
+    }
+
+    // Image upload methods
+    private async Task HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            await ProcessImageUpload(file);
+        }
+    }
+
+    private async Task ProcessImageUpload(IBrowserFile file)
+    {
+        if (eventDto == null) return;
+
+        isUploading = true;
+        uploadMessage = null;
+        uploadSuccess = false;
+
+        try
+        {
+            // Validate file
+            if (file.Size > 5 * 1024 * 1024) // 5MB limit
+            {
+                uploadMessage = "File size must be less than 5MB";
+                uploadSuccess = false;
+                return;
+            }
+
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                uploadMessage = "Please select an image file";
+                uploadSuccess = false;
+                return;
+            }
+
+            // Upload file
+            var imageUrl = await EventService.UploadEventImageAsync(file);
+            if (!string.IsNullOrEmpty(imageUrl))
+            {
+                eventDto.ImageUrl = imageUrl;
+                uploadMessage = "Image uploaded successfully!";
+                uploadSuccess = true;
+            }
+            else
+            {
+                uploadMessage = "Failed to upload image";
+                uploadSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error uploading image: {ex.Message}");
+            uploadMessage = "Error uploading image";
+            uploadSuccess = false;
+        }
+        finally
+        {
+            isUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleDragEnter()
+    {
+        isDragActive = true;
+        StateHasChanged();
+    }
+
+    private void HandleDragLeave()
+    {
+        isDragActive = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleDrop()
+    {
+        isDragActive = false;
+        StateHasChanged();
+    }
+
+    private async Task TriggerFileInput()
+    {
+        if (fileInputRef != null)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('input[type=file]').click()");
+        }
+    }
+
+    private void RemoveCurrentImage()
+    {
+        if (eventDto != null)
+        {
+            eventDto.ImageUrl = null;
+            StateHasChanged();
+        }
+    }
+
+    // Ticket management
+    private void AddTicketType()
+    {
+        if (eventDto != null)
+        {
+            eventDto.TicketTypes ??= new List<TicketTypeDto>();
+            eventDto.TicketTypes.Add(new TicketTypeDto
+            {
+                EventID = eventDto.EventID,
+                TypeName = "",
+                Price = 0,
+                Quantity = 0,
+                Description = "",
+                IsActive = true
+            });
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveTicketType(int index)
+    {
+        if (eventDto?.TicketTypes != null && index >= 0 && index < eventDto.TicketTypes.Count)
+        {
+            eventDto.TicketTypes.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    // Publishing
+    private async Task PublishEvent()
+    {
+        if (eventDto == null) return;
+
+        try
+        {
+            var success = await EventService.UpdateEventStatusAsync(eventDto.EventID, EventStatus.Published);
+            if (success)
+            {
+                eventDto.Status = EventStatus.Published;
+                await JSRuntime.InvokeVoidAsync("alert", "Event published successfully!");
+                StateHasChanged();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to publish event");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error publishing event: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", "Error publishing event");
+        }
+    }
+
+    private async Task UnpublishEvent()
+    {
+        if (eventDto == null) return;
+
+        try
+        {
+            var success = await EventService.UpdateEventStatusAsync(eventDto.EventID, EventStatus.Draft);
+            if (success)
+            {
+                eventDto.Status = EventStatus.Draft;
+                await JSRuntime.InvokeVoidAsync("alert", "Event unpublished successfully!");
+                StateHasChanged();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to unpublish event");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error unpublishing event: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", "Error unpublishing event");
+        }
+    }
+
+    private string GetStatusClass(EventStatus status)
+    {
+        return status switch
+        {
+            EventStatus.Published => "published",
+            EventStatus.Draft => "draft",
+            EventStatus.InProgress => "in-progress",
+            EventStatus.Completed => "completed",
+            EventStatus.Cancelled => "cancelled",
+            _ => "draft"
+        };
+    }
+}

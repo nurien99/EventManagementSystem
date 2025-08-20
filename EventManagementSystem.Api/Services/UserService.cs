@@ -1,10 +1,12 @@
 ﻿using EventManagementSystem.Api.Data;
+using EventManagementSystem.Api.Models;
 using EventManagementSystem.Api.Services.Interfaces;
 using EventManagementSystem.Core;
 using EventManagementSystem.Core.DTOs;
 using EventManagementSystem.Core.DTOs.Email;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -20,18 +22,21 @@ namespace EventManagementSystem.Api.Services
         private readonly IEmailService _emailService;
         private readonly INotificationService _notificationService;
         private readonly ILogger<UserService> _logger;
+        private readonly FrontendSettings _frontendSettings;
 
         public UserService(
             ApplicationDbContext context,
             IConfiguration configuration,
             IEmailService emailService,
             INotificationService notificationService,
-            ILogger<UserService> logger)
+            ILogger<UserService> logger,
+            IOptions<FrontendSettings> frontendSettings)
         {
             _context = context;
             _configuration = configuration;
             _emailService = emailService;
             _notificationService = notificationService;
+            _frontendSettings = frontendSettings.Value;
             _logger = logger;
         }
 
@@ -209,7 +214,7 @@ namespace EventManagementSystem.Api.Services
                     await _context.SaveChangesAsync();
 
                     // Generate reset link for Blazor client
-                    var resetLink = $"https://localhost:7155/reset-password?token={resetToken}&email={user.Email}";
+                    var resetLink = $"{_frontendSettings.BaseUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(user.Email)}";
 
                     // Send password reset email using the new template system
                     try
@@ -217,8 +222,12 @@ namespace EventManagementSystem.Api.Services
                         var resetModel = new PasswordResetModel
                         {
                             UserName = user.Name,
+                            Email = user.Email,
+                            SiteName = _frontendSettings.AppName,
+                            SiteUrl = _frontendSettings.BaseUrl,
                             ResetUrl = resetLink,
-                            ExpiresAt = user.ResetTokenExpires.Value
+                            ExpiresAt = user.ResetTokenExpires.Value,
+                            SentAt = DateTime.UtcNow
                         };
 
                         await _emailService.SendTemplateEmailAsync(
@@ -324,33 +333,186 @@ namespace EventManagementSystem.Api.Services
         {
             try
             {
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Email == email && u.EmailVerificationToken == token);
+                _logger.LogInformation("🔍 Email verification attempt for {Email} with token length: {TokenLength}", email, token?.Length ?? 0);
 
-                if (user == null)
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
                 {
-                    return ApiResponse<bool>.ErrorResult("Invalid email verification token.");
+                    _logger.LogWarning("❌ Email verification failed - missing parameters. Email: {HasEmail}, Token: {HasToken}", 
+                        !string.IsNullOrWhiteSpace(email), !string.IsNullOrWhiteSpace(token));
+                    return ApiResponse<bool>.ErrorResult("Email and token are required for verification.");
                 }
 
-                if (user.IsEmailVerified)
+                // First, check if user exists with this email
+                var userByEmail = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == email);
+
+                if (userByEmail == null)
                 {
+                    _logger.LogWarning("❌ No user found with email {Email}", email);
+                    return ApiResponse<bool>.ErrorResult("User not found with the provided email address.");
+                }
+
+                _logger.LogInformation("📧 User found: ID={UserId}, IsVerified={IsVerified}, TokenMatch={TokenMatch}", 
+                    userByEmail.UserID, userByEmail.IsEmailVerified, userByEmail.EmailVerificationToken == token);
+
+                // Check if email is already verified
+                if (userByEmail.IsEmailVerified)
+                {
+                    _logger.LogInformation("✅ Email already verified for user {UserId} ({Email})", userByEmail.UserID, email);
                     return ApiResponse<bool>.SuccessResult(true, "Email is already verified.");
                 }
 
+                // Check token match
+                if (userByEmail.EmailVerificationToken != token)
+                {
+                    _logger.LogWarning("❌ Token mismatch for user {UserId}. Expected length: {ExpectedLength}, Received length: {ReceivedLength}", 
+                        userByEmail.UserID, userByEmail.EmailVerificationToken?.Length ?? 0, token?.Length ?? 0);
+                    return ApiResponse<bool>.ErrorResult("Invalid email verification token.");
+                }
+
                 // Mark email as verified
-                user.IsEmailVerified = true;
-                user.EmailVerificationToken = string.Empty; // Clear the token
-                user.UpdatedAt = DateTime.UtcNow;
+                userByEmail.IsEmailVerified = true;
+                userByEmail.EmailVerificationToken = string.Empty; // Clear the token
+                userByEmail.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Email verified for user {UserId} ({Email})", user.UserID, user.Email);
+                _logger.LogInformation("✅ Email verified successfully for user {UserId} ({Email})", userByEmail.UserID, email);
                 return ApiResponse<bool>.SuccessResult(true, "Email verified successfully.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying email for {Email}", email);
+                _logger.LogError(ex, "❌ Error verifying email for {Email}", email);
                 return ApiResponse<bool>.ErrorResult("An error occurred while verifying email.", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<ApiResponse<UserDto>> UpgradeToOrganizerAsync(int userId)
+        {
+            try
+            {
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.UserID == userId && u.IsActive);
+
+                if (user == null)
+                {
+                    return ApiResponse<UserDto>.ErrorResult("User not found.");
+                }
+
+                // Check if user is already an organizer or admin
+                if (user.Role == UserRole.EventOrganizer || user.Role == UserRole.Admin)
+                {
+                    return ApiResponse<UserDto>.ErrorResult("User is already an organizer or admin.");
+                }
+
+                // Upgrade user to EventOrganizer
+                user.Role = UserRole.EventOrganizer;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                var updatedUserDto = MapToUserDto(user);
+                _logger.LogInformation("User {UserId} ({Email}) upgraded to EventOrganizer", user.UserID, user.Email);
+
+                return ApiResponse<UserDto>.SuccessResult(updatedUserDto, "Successfully upgraded to Event Organizer! You can now create and manage events.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error upgrading user {UserId} to organizer", userId);
+                return ApiResponse<UserDto>.ErrorResult("An error occurred while upgrading user role.", new List<string> { ex.Message });
+            }
+        }
+
+        public async Task<ApiResponse<UserDto>> UpdateProfileAsync(int userId, UpdateProfileDto updateProfileDto)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return ApiResponse<UserDto>.ErrorResult("User not found.");
+                }
+
+                // Check if email is being changed and if new email already exists
+                if (user.Email != updateProfileDto.Email)
+                {
+                    var existingUser = await _context.Users
+                        .FirstOrDefaultAsync(u => u.Email == updateProfileDto.Email && u.UserID != userId);
+                    
+                    if (existingUser != null)
+                    {
+                        return ApiResponse<UserDto>.ErrorResult("Email address is already in use.");
+                    }
+
+                    // If email changed, mark as unverified and generate new token
+                    user.IsEmailVerified = false;
+                    user.EmailVerificationToken = GenerateVerificationToken();
+                }
+
+                // Update profile information
+                user.Name = updateProfileDto.Name;
+                user.Email = updateProfileDto.Email;
+                user.PhoneNumber = updateProfileDto.PhoneNumber;
+                user.Organization = updateProfileDto.Organization;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                // Send verification email if email was changed
+                if (user.EmailVerificationToken != null)
+                {
+                    await _notificationService.SendWelcomeEmailAsync(user.UserID);
+                }
+
+                _logger.LogInformation($"Profile updated successfully for user {userId}");
+
+                var userDto = MapToUserDto(user);
+                return ApiResponse<UserDto>.SuccessResult(userDto, "Profile updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating profile for user {userId}");
+                return ApiResponse<UserDto>.ErrorResult($"Error updating profile: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<bool>> ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return ApiResponse<bool>.ErrorResult("User not found.");
+                }
+
+                // Verify current password
+                if (!BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, user.Password))
+                {
+                    return ApiResponse<bool>.ErrorResult("Current password is incorrect.");
+                }
+
+                // Hash new password
+                var hashedNewPassword = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+                
+                // Update password
+                user.Password = hashedNewPassword;
+                user.UpdatedAt = DateTime.UtcNow;
+                
+                // Clear any existing password reset tokens
+                user.PasswordResetToken = null;
+                user.ResetTokenExpires = null;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Password changed successfully for user {userId}");
+
+                return ApiResponse<bool>.SuccessResult(true, "Password changed successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error changing password for user {userId}");
+                return ApiResponse<bool>.ErrorResult($"Error changing password: {ex.Message}");
             }
         }
 

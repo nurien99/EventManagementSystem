@@ -1,0 +1,379 @@
+@page "/admin/venues"
+@using EventManagementSystem.Core.DTOs
+@inject ApiService ApiService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Venue Management - Admin</PageTitle>
+
+<div class="admin-page">
+    <div class="admin-container">
+        <!-- Page Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="admin-title">
+                        <i class="bi bi-geo-alt me-3"></i>Venue Management
+                    </h1>
+                    <p class="admin-subtitle">
+                        Manage event venues and locations
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" @onclick="RefreshVenues">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                    </button>
+                    <button class="btn btn-success" @onclick="ShowAddVenueModal">
+                        <i class="bi bi-plus-circle me-2"></i>Add Venue
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Venues Grid -->
+        @if (isLoading)
+        {
+            <div class="admin-loading">
+                <div class="d-flex justify-content-center align-items-center py-5">
+                    <div class="spinner-border text-primary me-3" role="status"></div>
+                    <span>Loading venues...</span>
+                </div>
+            </div>
+        }
+        else if (hasError)
+        {
+            <div class="alert alert-danger">
+                <h5><i class="bi bi-exclamation-triangle me-2"></i>Error Loading Venues</h5>
+                <p>@errorMessage</p>
+                <button class="btn btn-danger" @onclick="RefreshVenues">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                </button>
+            </div>
+        }
+        else if (!venues.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-geo-alt"></i>
+                </div>
+                <h3>No Venues Found</h3>
+                <p>Start by adding your first venue location.</p>
+                <button class="btn btn-primary" @onclick="ShowAddVenueModal">
+                    <i class="bi bi-plus-circle me-2"></i>Add First Venue
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="venues-grid">
+                @foreach (var venue in venues)
+                {
+                    <div class="venue-card">
+                        <div class="venue-header">
+                            <div class="venue-info">
+                                <h4>@venue.Name</h4>
+                                <p class="venue-address">
+                                    <i class="bi bi-geo-alt me-2"></i>
+                                    @venue.Address
+                                    @if (!string.IsNullOrEmpty(venue.City))
+                                    {
+                                        <span>, @venue.City</span>
+                                    }
+                                </p>
+                            </div>
+                            <div class="venue-actions">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => EditVenue(venue.VenueID)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteVenue(venue.VenueID, venue.Name)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="venue-details">
+                            @if (venue.Capacity.HasValue)
+                            {
+                                <div class="detail-item">
+                                    <i class="bi bi-people"></i>
+                                    <span>Capacity: @venue.Capacity.Value.ToString("N0")</span>
+                                </div>
+                            }
+                            <div class="detail-item">
+                                <i class="bi bi-calendar-event"></i>
+                                <span>@venue.EventCount events hosted</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Add/Edit Venue Modal -->
+        @if (showModal)
+        {
+            <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                @(editingVenue != null ? "Edit Venue" : "Add New Venue")
+                            </h5>
+                            <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form @onsubmit="SaveVenue" @onsubmit:preventDefault="true">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="venueName" class="form-label">Venue Name *</label>
+                                        <input type="text" id="venueName" class="form-control" 
+                                               @bind="venueForm.Name" required maxlength="100" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="venueCapacity" class="form-label">Capacity</label>
+                                        <input type="number" id="venueCapacity" class="form-control" 
+                                               @bind="venueForm.Capacity" min="1" max="1000000" />
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="venueAddress" class="form-label">Address *</label>
+                                    <input type="text" id="venueAddress" class="form-control" 
+                                           @bind="venueForm.Address" required maxlength="200" />
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="venueCity" class="form-label">City</label>
+                                        <input type="text" id="venueCity" class="form-control" 
+                                               @bind="venueForm.City" maxlength="50" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="venueState" class="form-label">State/Province</label>
+                                        <input type="text" id="venueState" class="form-control" 
+                                               @bind="venueForm.State" maxlength="50" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="venueCountry" class="form-label">Country</label>
+                                        <input type="text" id="venueCountry" class="form-control" 
+                                               @bind="venueForm.Country" maxlength="50" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="venuePostalCode" class="form-label">Postal Code</label>
+                                        <input type="text" id="venuePostalCode" class="form-control" 
+                                               @bind="venueForm.PostalCode" maxlength="20" />
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">
+                                Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" @onclick="SaveVenue" 
+                                    disabled="@(string.IsNullOrWhiteSpace(venueForm.Name) || string.IsNullOrWhiteSpace(venueForm.Address) || isSaving)">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                @(editingVenue != null ? "Update" : "Create")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<VenueDto> venues = new();
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    private bool showModal = false;
+    private bool isSaving = false;
+    private VenueDto? editingVenue = null;
+    private VenueFormDto venueForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVenues();
+    }
+
+    private async Task LoadVenues()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            StateHasChanged();
+
+            var response = await ApiService.GetAsync<List<VenueDto>>("/api/venues");
+            
+            if (response != null && response.Success && response.Data != null)
+            {
+                venues = response.Data;
+            }
+            else
+            {
+                hasError = true;
+                errorMessage = response?.Message ?? "Failed to load venues";
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = $"Error loading venues: {ex.Message}";
+            Console.WriteLine($"Error in LoadVenues: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshVenues()
+    {
+        await LoadVenues();
+    }
+
+    private void ShowAddVenueModal()
+    {
+        editingVenue = null;
+        venueForm = new VenueFormDto();
+        showModal = true;
+        StateHasChanged();
+    }
+
+    private void EditVenue(int venueId)
+    {
+        editingVenue = venues.FirstOrDefault(v => v.VenueID == venueId);
+        if (editingVenue != null)
+        {
+            venueForm = new VenueFormDto
+            {
+                Name = editingVenue.Name,
+                Address = editingVenue.Address,
+                City = editingVenue.City,
+                State = editingVenue.State,
+                Country = editingVenue.Country,
+                PostalCode = editingVenue.PostalCode,
+                Capacity = editingVenue.Capacity
+            };
+            showModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteVenue(int venueId, string venueName)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"Are you sure you want to delete the venue '{venueName}'? This action cannot be undone.");
+        
+        if (confirmed)
+        {
+            try
+            {
+                var success = await ApiService.DeleteAsync($"/api/venues/{venueId}");
+                
+                if (success)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Venue deleted successfully!");
+                    await LoadVenues();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Failed to delete venue");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error deleting venue: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveVenue()
+    {
+        if (string.IsNullOrWhiteSpace(venueForm.Name) || string.IsNullOrWhiteSpace(venueForm.Address))
+            return;
+
+        try
+        {
+            isSaving = true;
+            StateHasChanged();
+
+            ApiResponse<VenueDto>? response;
+
+            if (editingVenue != null)
+            {
+                // Update existing venue
+                response = await ApiService.PutAsync<VenueDto>(
+                    $"/api/venues/{editingVenue.VenueID}", venueForm);
+            }
+            else
+            {
+                // Create new venue
+                response = await ApiService.PostAsync<VenueDto>(
+                    "/api/venues", venueForm);
+            }
+
+            if (response != null && response.Success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", 
+                    editingVenue != null ? "Venue updated successfully!" : "Venue created successfully!");
+                
+                CloseModal();
+                await LoadVenues();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", 
+                    response?.Message ?? "Failed to save venue");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error saving venue: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        editingVenue = null;
+        venueForm = new VenueFormDto();
+        StateHasChanged();
+    }
+
+    public class VenueDto
+    {
+        public int VenueID { get; set; }
+        public string Name { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "";
+        public string Country { get; set; } = "";
+        public string PostalCode { get; set; } = "";
+        public int? Capacity { get; set; }
+        public int EventCount { get; set; }
+    }
+
+    public class VenueFormDto
+    {
+        public string Name { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "";
+        public string Country { get; set; } = "";
+        public string PostalCode { get; set; } = "";
+        public int? Capacity { get; set; }
+    }
+}

@@ -1,4 +1,5 @@
 ﻿using EventManagementSystem.Api.Data;
+using EventManagementSystem.Api.Models;
 using EventManagementSystem.Api.Services;
 using EventManagementSystem.Api.Services.Interfaces;
 using EventManagementSystem.Core.Configuration;
@@ -10,7 +11,9 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -19,6 +22,19 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+// --- CORS Configuration ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorApp", policy =>
+    {
+        policy.WithOrigins("https://localhost:7120", "http://localhost:5234", "https://localhost:7203", "https://localhost:7155", "http://localhost:5252")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // --- JWT Authentication Setup ---
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? ""));
@@ -55,6 +71,7 @@ builder.Services.AddDataProtection()
 // Configuration
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
+builder.Services.Configure<FrontendSettings>(builder.Configuration.GetSection("FrontendSettings"));
 
 // ✅ ENHANCED FLUENT EMAIL CONFIGURATION
 var emailSettings = builder.Configuration.GetSection("EmailSettings").Get<EmailSettings>();
@@ -96,7 +113,8 @@ builder.Services.AddHangfireServer(options =>
 
 // ✅ REGISTER SERVICES IN CORRECT ORDER
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
-builder.Services.AddScoped<IEmailTemplateService, SimpleEmailTemplateService>();
+builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<IEmailTemplateService, RazorEmailTemplateService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -109,17 +127,12 @@ builder.Services.AddScoped<IEventAssistantService, EventAssistantService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<BackgroundEmailProcessor>();
 
-builder.Services.AddControllers();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowBlazorApp", builder =>
+builder.Services.AddControllersWithViews()
+    .AddRazorOptions(options =>
     {
-        builder.WithOrigins("https://localhost:7155", "http://localhost:5252")
-               .AllowAnyHeader()
-               .AllowAnyMethod()
-               .AllowCredentials();
+        options.ViewLocationFormats.Add("/EmailTemplates/{0}.cshtml");
+        options.ViewLocationFormats.Add("/EmailTemplates/{1}/{0}.cshtml");
     });
-});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -170,6 +183,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+// ✅ STATIC FILE SERVING FOR UPLOADS
+app.UseStaticFiles(); // Default wwwroot folder
 app.UseCors("AllowBlazorApp");
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -217,10 +233,21 @@ catch (Exception ex)
 
 app.Run();
 
+
 public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context)
     {
-        return true; // For development only
+        // Use GetHttpContext() consistently - this is the correct way for Hangfire
+        var httpContext = context.GetHttpContext();
+
+        // Allow in development environment
+        var environment = httpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+        if (environment.IsDevelopment())
+            return true;
+
+        // In production, require authentication
+        return httpContext.User.Identity.IsAuthenticated &&
+               httpContext.User.IsInRole("Admin");
     }
 }

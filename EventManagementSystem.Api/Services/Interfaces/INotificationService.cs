@@ -13,6 +13,7 @@ namespace EventManagementSystem.Api.Services.Interfaces
         Task<ApiResponse<bool>> SendEventReminderAsync(int eventId, int hoursBeforeEvent);
         Task<ApiResponse<bool>> SendEventCancellationAsync(int eventId, string reason);
         Task<ApiResponse<bool>> SendEventUpdateAsync(int eventId, string updateMessage);
+        Task<ApiResponse<bool>> SendTicketEmailAsync(int ticketId);
 
         // Bulk notifications
         Task<ApiResponse<bool>> SendBulkEventRemindersAsync(int eventId);

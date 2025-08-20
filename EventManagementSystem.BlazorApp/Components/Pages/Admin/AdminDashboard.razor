@@ -1,0 +1,334 @@
+@page "/admin"
+@page "/admin/dashboard"
+@using EventManagementSystem.Core
+@using EventManagementSystem.Core.DTOs
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Admin Dashboard - Event Management System</PageTitle>
+
+<div class="admin-dashboard-page">
+    <div class="admin-container">
+        <!-- Page Header -->
+        <div class="admin-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="admin-title">
+                        <i class="bi bi-shield-check me-3"></i>Admin Dashboard
+                    </h1>
+                    <p class="admin-subtitle">
+                        Platform overview and system management
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" @onclick="RefreshData">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="admin-loading">
+                <div class="d-flex justify-content-center align-items-center py-5">
+                    <div class="spinner-border text-primary me-3" role="status"></div>
+                    <span>Loading dashboard...</span>
+                </div>
+            </div>
+        }
+        else if (hasError)
+        {
+            <div class="alert alert-danger">
+                <h5><i class="bi bi-exclamation-triangle me-2"></i>Error Loading Dashboard</h5>
+                <p>@errorMessage</p>
+                <button class="btn btn-danger" @onclick="RefreshData">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Main Stats Row -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stats-card stats-primary">
+                        <div class="stats-icon">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3>@(stats?.TotalUsers ?? 0)</h3>
+                            <p>Total Users</p>
+                            <div class="stats-change positive">
+                                <i class="bi bi-arrow-up"></i> +12% this month
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stats-card stats-success">
+                        <div class="stats-icon">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3>@(stats?.TotalEvents ?? 0)</h3>
+                            <p>Total Events</p>
+                            <div class="stats-change positive">
+                                <i class="bi bi-arrow-up"></i> +8% this month
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stats-card stats-info">
+                        <div class="stats-icon">
+                            <i class="bi bi-ticket-perforated"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3>@(stats?.TotalRegistrations ?? 0)</h3>
+                            <p>Registrations</p>
+                            <div class="stats-change positive">
+                                <i class="bi bi-arrow-up"></i> +23% this month
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stats-card stats-warning">
+                        <div class="stats-icon">
+                            <i class="bi bi-currency-dollar"></i>
+                        </div>
+                        <div class="stats-content">
+                            <h3>$@(stats?.TotalRevenue.ToString("N0") ?? "0")</h3>
+                            <p>Revenue</p>
+                            <div class="stats-change neutral">
+                                <i class="bi bi-dash"></i> Coming Soon
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="row mb-4">
+                <!-- User Roles Chart -->
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h5><i class="bi bi-pie-chart me-2"></i>Users by Role</h5>
+                        </div>
+                        <div class="chart-content">
+                            @if (stats?.UsersByRole != null)
+                            {
+                                <div class="role-chart">
+                                    @foreach (var role in stats.UsersByRole)
+                                    {
+                                        var percentage = stats.TotalUsers > 0 ? (double)role.Value / stats.TotalUsers * 100 : 0;
+                                        <div class="role-item">
+                                            <div class="role-info">
+                                                <span class="role-name">@role.Key</span>
+                                                <span class="role-count">@role.Value users</span>
+                                            </div>
+                                            <div class="role-bar">
+                                                <div class="role-progress role-@role.Key.ToLower()" 
+                                                     style="width: @percentage.ToString("F1")%"></div>
+                                            </div>
+                                            <span class="role-percentage">@percentage.ToString("F1")%</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Status Chart -->
+                <div class="col-lg-6 mb-4">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h5><i class="bi bi-bar-chart me-2"></i>Events by Status</h5>
+                        </div>
+                        <div class="chart-content">
+                            @if (stats?.EventsByStatus != null)
+                            {
+                                <div class="status-chart">
+                                    @foreach (var status in stats.EventsByStatus)
+                                    {
+                                        var percentage = stats.TotalEvents > 0 ? (double)status.Value / stats.TotalEvents * 100 : 0;
+                                        <div class="status-item">
+                                            <div class="status-info">
+                                                <span class="status-name">@status.Key</span>
+                                                <span class="status-count">@status.Value events</span>
+                                            </div>
+                                            <div class="status-bar">
+                                                <div class="status-progress status-@status.Key.ToLower()" 
+                                                     style="width: @percentage.ToString("F1")%"></div>
+                                            </div>
+                                            <span class="status-percentage">@percentage.ToString("F1")%</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Management Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-lg-8">
+                    <!-- Recent Activity -->
+                    <div class="activity-card">
+                        <div class="activity-header">
+                            <h5><i class="bi bi-clock-history me-2"></i>Recent Activity</h5>
+                            <a href="/admin/activity" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+                        <div class="activity-content">
+                            @if (stats?.RecentActivity?.Any() == true)
+                            {
+                                <div class="activity-list">
+                                    @foreach (var activity in stats.RecentActivity.Take(8))
+                                    {
+                                        <div class="activity-item">
+                                            <div class="activity-icon activity-@activity.Type.ToLower().Replace(" ", "-")">
+                                                <i class="bi @GetActivityIcon(activity.Type)"></i>
+                                            </div>
+                                            <div class="activity-details">
+                                                <div class="activity-description">@activity.Description</div>
+                                                <div class="activity-time">@activity.Timestamp.ToString("MMM dd, yyyy - hh:mm tt")</div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="empty-activity">
+                                    <i class="bi bi-clock-history"></i>
+                                    <p>No recent activity</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Quick Actions -->
+                    <div class="quick-actions-card">
+                        <div class="quick-actions-header">
+                            <h5><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+                        </div>
+                        <div class="quick-actions-content">
+                            <a href="/admin/users" class="quick-action-item">
+                                <div class="quick-action-icon bg-primary">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h6>Manage Users</h6>
+                                    <p>View and manage user accounts</p>
+                                </div>
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+
+                            <a href="/admin/events" class="quick-action-item">
+                                <div class="quick-action-icon bg-success">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h6>Review Events</h6>
+                                    <p>Moderate and manage events</p>
+                                </div>
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+
+                            <a href="/admin/categories" class="quick-action-item">
+                                <div class="quick-action-icon bg-warning">
+                                    <i class="bi bi-tags"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h6>Categories</h6>
+                                    <p>Manage event categories</p>
+                                </div>
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+
+                            <a href="/admin/venues" class="quick-action-item">
+                                <div class="quick-action-icon bg-info">
+                                    <i class="bi bi-geo-alt"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h6>Venues</h6>
+                                    <p>Manage venue locations</p>
+                                </div>
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private AdminStatsDto? stats;
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            StateHasChanged();
+
+            var response = await ApiService.GetAsync<AdminStatsDto>("/api/admin/stats");
+            
+            if (response != null && response.Success && response.Data != null)
+            {
+                stats = response.Data;
+            }
+            else
+            {
+                hasError = true;
+                errorMessage = response?.Message ?? "Failed to load dashboard data";
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = $"Error loading dashboard: {ex.Message}";
+            Console.WriteLine($"Error in LoadDashboardData: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadDashboardData();
+    }
+
+    private string GetActivityIcon(string activityType)
+    {
+        return activityType.ToLower() switch
+        {
+            "user registration" => "bi-person-plus",
+            "event created" => "bi-calendar-plus",
+            "event registration" => "bi-ticket",
+            _ => "bi-activity"
+        };
+    }
+}
